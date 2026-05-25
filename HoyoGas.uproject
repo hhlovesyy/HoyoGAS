@@ -1,0 +1,49 @@
+{
+	"FileVersion": 3,
+	"EngineAssociation": "5.5",
+	"Category": "",
+	"Description": "",
+	"Modules": [
+		{
+			"Name": "HoyoGas",
+			"Type": "Runtime",
+			"LoadingPhase": "Default",
+			"AdditionalDependencies": [
+				"CoreUObject",
+				"Blutility",
+				"Engine",
+				"GameplayAbilities"
+			]
+		}
+	],
+	"Plugins": [
+		{
+			"Name": "ModelingToolsEditorMode",
+			"Enabled": true,
+			"TargetAllowList": [
+				"Editor"
+			]
+		},
+		{
+			"Name": "CommonUI",
+			"Enabled": true
+		},
+		{
+			"Name": "GameplayAbilities",
+			"Enabled": true
+		},
+		{
+			"Name": "ModelViewViewModel",
+			"Enabled": true
+		},
+		{
+			"Name": "IKRig",
+			"Enabled": true
+		},
+		{
+			"Name": "KawaiiPhysics",
+			"Enabled": true,
+			"MarketplaceURL": "com.epicgames.launcher://ue/Fab/product/f870c07e-0a02-4a78-a888-e52a22794572"
+		}
+	]
+}

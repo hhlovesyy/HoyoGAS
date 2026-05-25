@@ -1,0 +1,78 @@
+[
+  {
+    "Name": "Musketeer_Head",
+    "RelicDefinitionId": "Musketeer_Head",
+    "SetId": "Musketeer",
+    "Slot": "Head",
+    "DisplayName": "快枪手的野穗毡帽",
+    "Rarity": 5,
+    "Icon": "",
+    "AllowedMainAffixIds": [
+      "HPFlat"
+    ]
+  },
+  {
+    "Name": "Musketeer_Hands",
+    "RelicDefinitionId": "Musketeer_Hands",
+    "SetId": "Musketeer",
+    "Slot": "Hands",
+    "DisplayName": "快枪手的粗革手套",
+    "Rarity": 5,
+    "Icon": "",
+    "AllowedMainAffixIds": [
+      "AttackFlat"
+    ]
+  },
+  {
+    "Name": "Musketeer_Body",
+    "RelicDefinitionId": "Musketeer_Body",
+    "SetId": "Musketeer",
+    "Slot": "Body",
+    "DisplayName": "快枪手的猎风披肩",
+    "Rarity": 5,
+    "Icon": "",
+    "AllowedMainAffixIds": [
+      "AttackPercent",
+      "CritRate",
+      "CritDamage"
+    ]
+  },
+  {
+    "Name": "Musketeer_Feet",
+    "RelicDefinitionId": "Musketeer_Feet",
+    "SetId": "Musketeer",
+    "Slot": "Feet",
+    "DisplayName": "快枪手的铆钉马靴",
+    "Rarity": 5,
+    "Icon": "",
+    "AllowedMainAffixIds": [
+      "AttackPercent"
+    ]
+  },
+  {
+    "Name": "WutheringSnow_PlanarSphere",
+    "RelicDefinitionId": "WutheringSnow_PlanarSphere",
+    "SetId": "WutheringSnow",
+    "Slot": "PlanarSphere",
+    "DisplayName": "铁卫的风雪位面球",
+    "Rarity": 5,
+    "Icon": "",
+    "AllowedMainAffixIds": [
+      "AttackPercent",
+      "HPFlat"
+    ]
+  },
+  {
+    "Name": "WutheringSnow_LinkRope",
+    "RelicDefinitionId": "WutheringSnow_LinkRope",
+    "SetId": "WutheringSnow",
+    "Slot": "LinkRope",
+    "DisplayName": "铁卫的风雪连结绳",
+    "Rarity": 5,
+    "Icon": "",
+    "AllowedMainAffixIds": [
+      "EnergyRecharge",
+      "AttackPercent"
+    ]
+  }
+]

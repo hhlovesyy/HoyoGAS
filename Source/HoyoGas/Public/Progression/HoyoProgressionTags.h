@@ -1,0 +1,15 @@
+#pragma once
+
+#include "NativeGameplayTags.h"
+
+namespace HoyoProgressionTags
+{
+	HOYOGAS_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Check_Counter);
+	HOYOGAS_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Check_AchievementUnlocked);
+	
+	HOYOGAS_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Progress_Counter_HoyoEffectPickup);
+	HOYOGAS_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Gameplay_Event_HoyoEffectPickedUp);
+	HOYOGAS_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(UI_Request_Show_AchievementToast);
+	HOYOGAS_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Progress_Counter_Player_HealthDecreased);
+	HOYOGAS_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Gameplay_Event_Player_HealthDecreased);
+}

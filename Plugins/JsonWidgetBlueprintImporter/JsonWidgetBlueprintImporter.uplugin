@@ -1,0 +1,29 @@
+{
+  "FileVersion": 3,
+  "Version": 1,
+  "VersionName": "0.1.0",
+  "FriendlyName": "JSON Widget Blueprint Importer",
+  "Description": "Imports a JSON UI schema into a Widget Blueprint.",
+  "Category": "UI",
+  "CanContainContent": false,
+  "IsBetaVersion": true,
+  "Installed": false,
+  "EnabledByDefault": true,
+  "Modules": [
+    {
+      "Name": "JsonWidgetBlueprintImporterEditor",
+      "Type": "Editor",
+      "LoadingPhase": "Default"
+    }
+  ],
+  "Plugins": [
+    {
+      "Name": "CommonUI",
+      "Enabled": true
+    },
+    {
+      "Name": "ModelViewViewModel",
+      "Enabled": true
+    }
+  ]
+}

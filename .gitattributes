@@ -1,0 +1,20 @@
+* text=auto
+
+*.h text eol=lf
+*.cpp text eol=lf
+*.cs text eol=lf
+*.json text eol=lf
+*.ini text eol=lf
+*.md text eol=lf
+*.uproject text eol=lf
+*.uplugin text eol=lf
+
+*.uasset binary
+*.umap binary
+*.ubulk binary
+*.uexp binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.wav binary
+*.mp3 binary

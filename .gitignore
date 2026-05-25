@@ -1,0 +1,53 @@
+# Unreal generated files
+Binaries/
+Build/
+DerivedDataCache/
+Intermediate/
+Saved/
+
+# IDE / editor files
+.vs/
+.idea/
+*.suo
+*.user
+*.userosscache
+*.sln.DotSettings.user
+
+# Logs and local crash data
+*.log
+*.tmp
+*.temp
+*.bak
+
+# Large Unreal assets are intentionally not tracked in this repository.
+# Use Git LFS later if the project needs to version art/audio/maps/assets.
+Content/
+*.uasset
+*.umap
+*.ubulk
+*.uexp
+*.uptnl
+*.ushaderbytecode
+
+# Plugin generated files, but keep plugin source and descriptors.
+Plugins/*/Binaries/
+Plugins/*/Intermediate/
+Plugins/*/Saved/
+
+# Common build outputs
+*.dll
+*.pdb
+*.obj
+*.lib
+*.exp
+*.ilk
+*.exe
+
+# Rider / ReSharper caches
+_ReSharper*/
+*.DotSettings.user
+
+# OS files
+Thumbs.db
+Desktop.ini
+.DS_Store

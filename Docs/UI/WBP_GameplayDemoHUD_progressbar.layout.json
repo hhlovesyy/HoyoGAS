@@ -1,0 +1,315 @@
+{
+  "version": "1.0",
+  "widgetBlueprintName": "WBP_GameplayDemoHUDScreen_GenshinProgress",
+  "parentClass": "GameplayDemoHUDScreen",
+  "root": {
+    "type": "CanvasPanel",
+    "name": "RootCanvas",
+    "codegen": {
+      "bindWidget": true
+    },
+    "children": [
+      {
+        "type": "Border",
+        "name": "RootBorder",
+        "slot": {
+          "kind": "CanvasPanelSlot",
+          "anchors": [0.0, 1.0, 0.0, 1.0],
+          "alignment": [0.0, 1.0],
+          "position": [42.0, -42.0],
+          "size": [560.0, 178.0]
+        },
+        "props": {
+          "brushColor": [0.025, 0.028, 0.032, 0.74],
+          "padding": [18.0, 14.0, 18.0, 14.0]
+        },
+        "codegen": {
+          "bindWidget": true
+        },
+        "semantic": {
+          "role": "hud.playerVitalsPanel"
+        },
+        "children": [
+          {
+            "type": "VerticalBox",
+            "name": "VBox_Content",
+            "children": [
+              {
+                "type": "HorizontalBox",
+                "name": "HeaderRow",
+                "slot": {
+                  "kind": "VerticalBoxSlot",
+                  "sizeRule": "auto",
+                  "padding": [0.0, 0.0, 0.0, 8.0]
+                },
+                "children": [
+                  {
+                    "type": "CommonTextBlock",
+                    "name": "LevelText",
+                    "slot": {
+                      "kind": "HorizontalBoxSlot",
+                      "sizeRule": "auto",
+                      "padding": [0.0, 0.0, 14.0, 0.0],
+                      "alignment": [0.0, 0.5]
+                    },
+                    "props": {
+                      "text": "Lv. 1",
+                      "fontSize": 22,
+                      "color": [0.96, 0.89, 0.64, 1.0]
+                    },
+                    "codegen": {
+                      "bindWidget": true
+                    },
+                    "semantic": {
+                      "role": "hud.level"
+                    }
+                  },
+                  {
+                    "type": "CommonTextBlock",
+                    "name": "ScoreText",
+                    "slot": {
+                      "kind": "HorizontalBoxSlot",
+                      "sizeRule": "fill",
+                      "fillWidth": 1.0,
+                      "alignment": [0.0, 0.5]
+                    },
+                    "props": {
+                      "text": "Score: 0",
+                      "fontSize": 16,
+                      "color": [0.84, 0.86, 0.9, 1.0]
+                    },
+                    "codegen": {
+                      "bindWidget": true
+                    },
+                    "semantic": {
+                      "role": "hud.score"
+                    }
+                  }
+                ]
+              },
+              {
+                "type": "SizeBox",
+                "name": "HealthBarBox",
+                "slot": {
+                  "kind": "VerticalBoxSlot",
+                  "sizeRule": "auto",
+                  "padding": [0.0, 0.0, 0.0, 8.0]
+                },
+                "props": {
+                  "desiredSize": [496.0, 26.0]
+                },
+                "children": [
+                  {
+                    "type": "Overlay",
+                    "name": "HealthBarOverlay",
+                    "semantic": {
+                      "role": "hud.healthBar"
+                    },
+                    "children": [
+                      {
+                        "type": "ProgressBar",
+                        "name": "HealthTrailProgressBar",
+                        "props": {
+                          "percent": 1.0,
+                          "backgroundColor": [0.045, 0.048, 0.052, 0.95],
+                          "fillColor": [1.0, 0.74, 0.16, 0.95]
+                        },
+                        "codegen": {
+                          "bindWidget": true
+                        },
+                        "semantic": {
+                          "role": "hud.healthTrail"
+                        }
+                      },
+                      {
+                        "type": "ProgressBar",
+                        "name": "HealthProgressBar",
+                        "props": {
+                          "percent": 1.0,
+                          "backgroundColor": [0.0, 0.0, 0.0, 0.0],
+                          "fillColor": [0.16, 0.88, 0.42, 1.0]
+                        },
+                        "codegen": {
+                          "bindWidget": true
+                        },
+                        "semantic": {
+                          "role": "hud.health"
+                        }
+                      },
+                      {
+                        "type": "CommonTextBlock",
+                        "name": "HealthText",
+                        "slot": {
+                          "kind": "OverlaySlot",
+                          "alignment": [0.5, 0.5]
+                        },
+                        "props": {
+                          "text": "100 / 100",
+                          "fontSize": 16,
+                          "color": [1.0, 1.0, 1.0, 1.0]
+                        },
+                        "codegen": {
+                          "bindWidget": true
+                        },
+                        "semantic": {
+                          "role": "hud.healthText"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "HorizontalBox",
+                "name": "EnergyRow",
+                "slot": {
+                  "kind": "VerticalBoxSlot",
+                  "sizeRule": "auto",
+                  "padding": [0.0, 0.0, 0.0, 8.0]
+                },
+                "children": [
+                  {
+                    "type": "SizeBox",
+                    "name": "EnergyBarBox",
+                    "slot": {
+                      "kind": "HorizontalBoxSlot",
+                      "sizeRule": "auto",
+                      "padding": [0.0, 0.0, 12.0, 0.0],
+                      "alignment": [0.0, 0.5]
+                    },
+                    "props": {
+                      "desiredSize": [326.0, 14.0]
+                    },
+                    "children": [
+                      {
+                        "type": "ProgressBar",
+                        "name": "EnergyProgressBar",
+                        "props": {
+                          "percent": 0.0,
+                          "fillColor": [0.18, 0.58, 1.0, 1.0]
+                        },
+                        "codegen": {
+                          "bindWidget": true
+                        },
+                        "semantic": {
+                          "role": "hud.energy"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "type": "CommonTextBlock",
+                    "name": "EnergyText",
+                    "slot": {
+                      "kind": "HorizontalBoxSlot",
+                      "sizeRule": "auto",
+                      "padding": [0.0, 0.0, 12.0, 0.0],
+                      "alignment": [0.0, 0.5]
+                    },
+                    "props": {
+                      "text": "0 / 60",
+                      "fontSize": 15,
+                      "color": [0.72, 0.87, 1.0, 1.0]
+                    },
+                    "codegen": {
+                      "bindWidget": true
+                    },
+                    "semantic": {
+                      "role": "hud.energyText"
+                    }
+                  },
+                  {
+                    "type": "CommonTextBlock",
+                    "name": "EnergyRechargeText",
+                    "slot": {
+                      "kind": "HorizontalBoxSlot",
+                      "sizeRule": "auto",
+                      "alignment": [0.0, 0.5]
+                    },
+                    "props": {
+                      "text": "ER 100%",
+                      "fontSize": 15,
+                      "color": [0.64, 0.73, 0.9, 1.0]
+                    },
+                    "codegen": {
+                      "bindWidget": true
+                    },
+                    "semantic": {
+                      "role": "hud.energyRechargeText"
+                    }
+                  }
+                ]
+              },
+              {
+                "type": "ProgressBar",
+                "name": "ProgressBar",
+                "slot": {
+                  "kind": "VerticalBoxSlot",
+                  "sizeRule": "auto",
+                  "padding": [0.0, 0.0, 0.0, 6.0]
+                },
+                "props": {
+                  "percent": 0.0,
+                  "fillColor": [0.93, 0.78, 0.34, 0.92]
+                },
+                "codegen": {
+                  "bindWidget": true
+                },
+                "semantic": {
+                  "role": "hud.progression"
+                }
+              },
+              {
+                "type": "HorizontalBox",
+                "name": "FooterRow",
+                "children": [
+                  {
+                    "type": "CommonTextBlock",
+                    "name": "RemainingText",
+                    "slot": {
+                      "kind": "HorizontalBoxSlot",
+                      "sizeRule": "fill",
+                      "fillWidth": 1.0,
+                      "alignment": [0.0, 0.5]
+                    },
+                    "props": {
+                      "text": "Next level in 100",
+                      "fontSize": 13,
+                      "color": [0.72, 0.74, 0.8, 0.9]
+                    },
+                    "codegen": {
+                      "bindWidget": true
+                    },
+                    "semantic": {
+                      "role": "hud.remainingToNextLevel"
+                    }
+                  },
+                  {
+                    "type": "CommonTextBlock",
+                    "name": "TotalValueText",
+                    "slot": {
+                      "kind": "HorizontalBoxSlot",
+                      "sizeRule": "auto",
+                      "alignment": [1.0, 0.5]
+                    },
+                    "props": {
+                      "text": "Inventory Value: 0",
+                      "fontSize": 13,
+                      "color": [0.72, 0.74, 0.8, 0.9]
+                    },
+                    "codegen": {
+                      "bindWidget": true
+                    },
+                    "semantic": {
+                      "role": "hud.inventoryValue"
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

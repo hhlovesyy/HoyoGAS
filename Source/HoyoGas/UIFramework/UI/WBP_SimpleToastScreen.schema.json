@@ -1,0 +1,80 @@
+{
+  "version": "1.0",
+  "widgetBlueprintName": "WBP_SimpleToastScreen",
+  "parentClass": "MyToastScreenBase",
+  "defaults": {
+    "fontObject": "/Game/Genshin/Fonts/Genshin_Font.Genshin_Font"
+  },
+  "root": {
+    "type": "CanvasPanel",
+    "name": "RootCanvas",
+    "children": [
+      {
+        "type": "SizeBox",
+        "name": "ToastSizeBox",
+        "slot": {
+          "anchors": [1, 0, 1, 0],
+          "alignment": [1, 0],
+          "position": [-32, 32],
+          "size": [360, 72]
+        },
+        "props": {
+          "widthOverride": 360,
+          "heightOverride": 72
+        },
+        "children": [
+          {
+            "type": "Border",
+            "name": "ToastFrame",
+            "props": {
+              "brushColor": [0.055, 0.06, 0.065, 0.94],
+              "padding": [18, 12, 18, 12]
+            },
+            "children": [
+              {
+                "type": "HorizontalBox",
+                "name": "ToastContent",
+                "children": [
+                  {
+                    "type": "TextBlock",
+                    "name": "ToastAccentText",
+                    "slot": {
+                      "sizeRule": "auto",
+                      "padding": [0, 0, 12, 0]
+                    },
+                    "props": {
+                      "text": "!",
+                      "fontSize": 28,
+                      "color": [0.92, 0.78, 0.42, 1]
+                    }
+                  },
+                  {
+                    "type": "TextBlock",
+                    "name": "ToastMessageText",
+                    "slot": {
+                      "sizeRule": "fill",
+                      "fillWidth": 1,
+                      "alignment": [0, 0.5]
+                    },
+                    "props": {
+                      "text": "Toast message",
+                      "fontSize": 18,
+                      "color": [0.94, 0.92, 0.86, 1],
+                      "autoWrap": true
+                    },
+                    "codegen": {
+                      "bindWidget": true
+                    },
+                    "semantic": {
+                      "role": "UIFramework.Toast.Message"
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

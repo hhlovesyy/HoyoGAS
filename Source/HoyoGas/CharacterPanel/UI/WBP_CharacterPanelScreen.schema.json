@@ -1,0 +1,1476 @@
+﻿{
+  "version": "1.0",
+  "widgetBlueprintName": "WBP_CharacterPanelScreen",
+  "parentClass": "CharacterPanelScreen",
+  "defaults": {
+    "fontObject": "/Game/Genshin/Fonts/Genshin_Font.Genshin_Font",
+    "richTextStyleSet": "auto"
+  },
+  "mvvm": {
+    "viewModels": [
+      {
+        "name": "ScreenViewModel",
+        "class": "VM_CharacterPanelScreen",
+        "creationType": "Manual"
+      }
+    ]
+  },
+  "root": {
+    "type": "CanvasPanel",
+    "name": "RootCanvas",
+    "children": [
+      {
+        "type": "Border",
+        "name": "ScreenFrame",
+        "slot": {
+          "anchors": "full",
+          "offsets": 0
+        },
+        "props": {
+          "brushColor": [0.035, 0.04, 0.045, 0.98],
+          "padding": [28, 24, 28, 24]
+        },
+        "children": [
+          {
+            "type": "HorizontalBox",
+            "name": "MainLayout",
+            "children": [
+              {
+                "type": "SizeBox",
+                "name": "CharacterSummaryColumn",
+                "slot": {
+                  "sizeRule": "auto",
+                  "padding": [0, 0, 24, 0]
+                },
+                "props": {
+                  "widthOverride": 300
+                },
+                "children": [
+                  {
+                    "type": "VerticalBox",
+                    "name": "CharacterSummaryStack",
+                    "children": [
+                      {
+                        "type": "Border",
+                        "name": "PortraitPanel",
+                        "slot": {
+                          "padding": [0, 0, 0, 18]
+                        },
+                        "props": {
+                          "brushColor": [0.13, 0.15, 0.16, 1],
+                          "padding": [18, 18, 18, 18]
+                        },
+                        "children": [
+                          {
+                            "type": "VerticalBox",
+                            "name": "PortraitStack",
+                            "children": [
+                              {
+                                "type": "Image",
+                                "name": "CharacterPortraitImage",
+                                "slot": {
+                                  "padding": [0, 0, 0, 14]
+                                },
+                                "props": {
+                                  "desiredSize": [240, 320],
+                                  "brushColor": [0.28, 0.31, 0.34, 1]
+                                },
+                                "codegen": {
+                                  "bindWidget": true
+                                },
+                                "semantic": {
+                                  "role": "CharacterPanel.CharacterPortrait"
+                                }
+                              },
+                              {
+                                "type": "TextBlock",
+                                "name": "CharacterNameText",
+                                "props": {
+                                  "text": "Trailblazer",
+                                  "fontSize": 28,
+                                  "color": [0.94, 0.92, 0.86, 1]
+                                },
+                                "codegen": {
+                                  "bindWidget": true,
+                                  "mvvm": {
+                                    "destination": "Text",
+                                    "sourceViewModel": "ScreenViewModel",
+                                    "sourceField": "CharacterNameText"
+                                  }
+                                },
+                                "semantic": {
+                                  "role": "CharacterPanel.CharacterName"
+                                }
+                              },
+                              {
+                                "type": "TextBlock",
+                                "name": "CharacterLevelText",
+                                "slot": {
+                                  "padding": [0, 6, 0, 0]
+                                },
+                                "props": {
+                                  "text": "Lv. 1 / 20",
+                                  "fontSize": 18,
+                                  "color": [0.68, 0.72, 0.72, 1]
+                                },
+                                "codegen": {
+                                  "bindWidget": true,
+                                  "mvvm": {
+                                    "destination": "Text",
+                                    "sourceViewModel": "ScreenViewModel",
+                                    "sourceField": "CharacterLevelText"
+                                  }
+                                },
+                                "semantic": {
+                                  "role": "CharacterPanel.CharacterLevel"
+                                }
+                              },
+                              {
+                                "type": "TextBlock",
+                                "name": "CharacterTitleText",
+                                "slot": {
+                                  "padding": [0, 6, 0, 0]
+                                },
+                                "props": {
+                                  "text": "Trailblazer",
+                                  "fontSize": 16,
+                                  "color": [0.78, 0.8, 0.78, 1]
+                                },
+                                "codegen": {
+                                  "bindWidget": true,
+                                  "mvvm": {
+                                    "destination": "Text",
+                                    "sourceViewModel": "ScreenViewModel",
+                                    "sourceField": "CharacterTitleText"
+                                  }
+                                },
+                                "semantic": {
+                                  "role": "CharacterPanel.CharacterTitle"
+                                }
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "type": "VerticalBox",
+                        "name": "TabButtonStack",
+                        "children": [
+                          {
+                            "type": "Button",
+                            "name": "DetailsTabButton",
+                            "slot": {
+                              "padding": [0, 0, 0, 8]
+                            },
+                            "props": {
+                              "text": "\u8be6\u60c5",
+                              "fontSize": 18,
+                              "brushColor": [0.22, 0.25, 0.27, 1],
+                              "color": [0.95, 0.95, 0.92, 1]
+                            },
+                            "codegen": {
+                              "bindWidget": true
+                            },
+                            "semantic": {
+                              "role": "CharacterPanel.Tab.Details"
+                            }
+                          },
+                          {
+                            "type": "Button",
+                            "name": "LightConeTabButton",
+                            "slot": {
+                              "padding": [0, 0, 0, 8]
+                            },
+                            "props": {
+                              "text": "\u5149\u9525",
+                              "fontSize": 18,
+                              "brushColor": [0.18, 0.2, 0.22, 1],
+                              "color": [0.88, 0.9, 0.9, 1]
+                            },
+                            "codegen": {
+                              "bindWidget": true
+                            },
+                            "semantic": {
+                              "role": "CharacterPanel.Tab.LightCone"
+                            }
+                          },
+                          {
+                            "type": "Button",
+                            "name": "TracesTabButton",
+                            "slot": {
+                              "padding": [0, 0, 0, 8]
+                            },
+                            "props": {
+                              "text": "\u884c\u8ff9",
+                              "fontSize": 18,
+                              "brushColor": [0.18, 0.2, 0.22, 1],
+                              "color": [0.88, 0.9, 0.9, 1]
+                            },
+                            "codegen": {
+                              "bindWidget": true
+                            },
+                            "semantic": {
+                              "role": "CharacterPanel.Tab.Traces"
+                            }
+                          },
+                          {
+                            "type": "Button",
+                            "name": "RelicsTabButton",
+                            "slot": {
+                              "padding": [0, 0, 0, 8]
+                            },
+                            "props": {
+                              "text": "\u4eea\u5668",
+                              "fontSize": 18,
+                              "brushColor": [0.18, 0.2, 0.22, 1],
+                              "color": [0.88, 0.9, 0.9, 1]
+                            },
+                            "codegen": {
+                              "bindWidget": true
+                            },
+                            "semantic": {
+                              "role": "CharacterPanel.Tab.Relics"
+                            }
+                          },
+                          {
+                            "type": "Button",
+                            "name": "EidolonsTabButton",
+                            "slot": {
+                              "padding": [0, 0, 0, 8]
+                            },
+                            "props": {
+                              "text": "\u661f\u9b42",
+                              "fontSize": 18,
+                              "brushColor": [0.18, 0.2, 0.22, 1],
+                              "color": [0.88, 0.9, 0.9, 1]
+                            },
+                            "codegen": {
+                              "bindWidget": true
+                            },
+                            "semantic": {
+                              "role": "CharacterPanel.Tab.Eidolons"
+                            }
+                          },
+                          {
+                            "type": "Button",
+                            "name": "InfoTabButton",
+                            "props": {
+                              "text": "\u4fe1\u606f",
+                              "fontSize": 18,
+                              "brushColor": [0.18, 0.2, 0.22, 1],
+                              "color": [0.88, 0.9, 0.9, 1]
+                            },
+                            "codegen": {
+                              "bindWidget": true
+                            },
+                            "semantic": {
+                              "role": "CharacterPanel.Tab.Info"
+                            }
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "VerticalBox",
+                "name": "ContentColumn",
+                "slot": {
+                  "sizeRule": "fill",
+                  "fillWidth": 1
+                },
+                "children": [
+                  {
+                    "type": "HorizontalBox",
+                    "name": "ContentHeader",
+                    "slot": {
+                      "sizeRule": "auto",
+                      "padding": [0, 0, 0, 18]
+                    },
+                    "children": [
+                      {
+                        "type": "TextBlock",
+                        "name": "ActiveTabTitleText",
+                        "slot": {
+                          "sizeRule": "fill",
+                          "fillWidth": 1
+                        },
+                        "props": {
+                          "text": "Details",
+                          "fontSize": 30,
+                          "color": [0.94, 0.92, 0.86, 1]
+                        },
+                        "codegen": {
+                          "bindWidget": true,
+                          "mvvm": {
+                            "destination": "Text",
+                            "sourceViewModel": "ScreenViewModel",
+                            "sourceField": "SelectedTabLabel"
+                          }
+                        },
+                        "semantic": {
+                          "role": "CharacterPanel.ActiveTabTitle"
+                        }
+                      },
+                      {
+                        "type": "Button",
+                        "name": "CloseButton",
+                        "props": {
+                          "text": "X",
+                          "fontSize": 18,
+                          "brushColor": [0.18, 0.2, 0.22, 1],
+                          "color": [0.9, 0.9, 0.88, 1]
+                        },
+                        "codegen": {
+                          "bindWidget": true
+                        },
+                        "semantic": {
+                          "role": "CharacterPanel.Close"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "type": "WidgetSwitcher",
+                    "name": "PageSwitcher",
+                    "slot": {
+                      "sizeRule": "fill",
+                      "fillWidth": 1
+                    },
+                    "props": {
+                      "activeWidgetIndex": 0
+                    },
+                    "codegen": {
+                      "bindWidget": true
+                    },
+                    "semantic": {
+                      "role": "CharacterPanel.PageSwitcher"
+                    },
+                    "children": [
+                      {
+                        "type": "Border",
+                        "name": "DetailsPage",
+                        "props": {
+                          "brushColor": [0.105, 0.12, 0.13, 1],
+                          "padding": [24, 24, 24, 24]
+                        },
+                        "children": [
+                          {
+                            "type": "VerticalBox",
+                            "name": "DetailsContentStack",
+                            "children": [
+                              {
+                                "type": "TextBlock",
+                                "name": "DetailsNameText",
+                                "slot": {
+                                  "padding": [0, 0, 0, 14]
+                                },
+                                "props": {
+                                  "text": "Stelle",
+                                  "fontSize": 26,
+                                  "color": [0.94, 0.92, 0.86, 1]
+                                },
+                                "codegen": {
+                                  "bindWidget": true,
+                                  "mvvm": {
+                                    "destination": "Text",
+                                    "sourceViewModel": "ScreenViewModel",
+                                    "sourceField": "CharacterNameText"
+                                  }
+                                }
+                              },
+                              {
+                                "type": "TextBlock",
+                                "name": "DetailsPathText",
+                                "slot": {
+                                  "padding": [0, 0, 0, 8]
+                                },
+                                "props": {
+                                  "text": "Path: Destruction",
+                                  "fontSize": 18,
+                                  "color": [0.82, 0.84, 0.84, 1]
+                                },
+                                "codegen": {
+                                  "bindWidget": true,
+                                  "mvvm": {
+                                    "destination": "Text",
+                                    "sourceViewModel": "ScreenViewModel",
+                                    "sourceField": "CharacterPathText"
+                                  }
+                                }
+                              },
+                              {
+                                "type": "TextBlock",
+                                "name": "DetailsElementText",
+                                "slot": {
+                                  "padding": [0, 0, 0, 8]
+                                },
+                                "props": {
+                                  "text": "Element: Physical",
+                                  "fontSize": 18,
+                                  "color": [0.82, 0.84, 0.84, 1]
+                                },
+                                "codegen": {
+                                  "bindWidget": true,
+                                  "mvvm": {
+                                    "destination": "Text",
+                                    "sourceViewModel": "ScreenViewModel",
+                                    "sourceField": "CharacterElementText"
+                                  }
+                                }
+                              },
+                              {
+                                "type": "TextBlock",
+                                "name": "DetailsFactionText",
+                                "slot": {
+                                  "padding": [0, 0, 0, 8]
+                                },
+                                "props": {
+                                  "text": "Faction: Astral Express",
+                                  "fontSize": 18,
+                                  "color": [0.82, 0.84, 0.84, 1]
+                                },
+                                "codegen": {
+                                  "bindWidget": true,
+                                  "mvvm": {
+                                    "destination": "Text",
+                                    "sourceViewModel": "ScreenViewModel",
+                                    "sourceField": "CharacterFactionText"
+                                  }
+                                }
+                              },
+                              {
+                                "type": "TextBlock",
+                                "name": "DetailsRarityText",
+                                "slot": {
+                                  "padding": [0, 0, 0, 18]
+                                },
+                                "props": {
+                                  "text": "5-Star",
+                                  "fontSize": 18,
+                                  "color": [0.92, 0.78, 0.42, 1]
+                                },
+                                "codegen": {
+                                  "bindWidget": true,
+                                  "mvvm": {
+                                    "destination": "Text",
+                                    "sourceViewModel": "ScreenViewModel",
+                                    "sourceField": "CharacterRarityText"
+                                  }
+                                }
+                              },
+                              {
+                                "type": "TextBlock",
+                                "name": "DetailsShortBioText",
+                                "props": {
+                                  "text": "Character bio",
+                                  "fontSize": 17,
+                                  "color": [0.76, 0.78, 0.76, 1],
+                                  "autoWrap": true
+                                },
+                                "codegen": {
+                                  "bindWidget": true,
+                                  "mvvm": {
+                                    "destination": "Text",
+                                    "sourceViewModel": "ScreenViewModel",
+                                    "sourceField": "CharacterShortBioText"
+                                  }
+                                }
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "type": "Border",
+                        "name": "LightConePage",
+                        "props": {
+                          "brushColor": [0.105, 0.12, 0.13, 1],
+                          "padding": [24, 24, 24, 24]
+                        },
+                        "children": [
+                          {
+                            "type": "TextBlock",
+                            "name": "LightConePlaceholderText",
+                            "props": {
+                              "text": "Light Cone page placeholder",
+                              "fontSize": 20,
+                              "color": [0.82, 0.84, 0.84, 1]
+                            }
+                          }
+                        ]
+                      },
+                      {
+                        "type": "Border",
+                        "name": "TracesPage",
+                        "props": {
+                          "brushColor": [0.105, 0.12, 0.13, 1],
+                          "padding": [24, 24, 24, 24]
+                        },
+                        "children": [
+                          {
+                            "type": "TextBlock",
+                            "name": "TracesPlaceholderText",
+                            "props": {
+                              "text": "Traces page placeholder",
+                              "fontSize": 20,
+                              "color": [0.82, 0.84, 0.84, 1]
+                            }
+                          }
+                        ]
+                      },
+                      {
+                        "type": "Border",
+                        "name": "RelicsPage",
+                        "props": {
+                          "brushColor": [0.105, 0.12, 0.13, 1],
+                          "padding": [24, 24, 24, 24]
+                        },
+                        "children": [
+                          {
+                            "type": "VerticalBox",
+                            "name": "RelicsContentStack",
+                            "children": [
+                              {
+                                "type": "HorizontalBox",
+                                "name": "RelicsHeaderRow",
+                                "slot": {
+                                  "sizeRule": "auto",
+                                  "padding": [0, 0, 0, 14]
+                                },
+                                "children": [
+                                  {
+                                    "type": "VerticalBox",
+                                    "name": "RelicsHeaderTextStack",
+                                    "slot": {
+                                      "sizeRule": "fill",
+                                      "fillWidth": 1
+                                    },
+                                    "children": [
+                                      {
+                                        "type": "TextBlock",
+                                        "name": "RelicsTitleText",
+                                        "props": {
+                                          "text": "遗器",
+                                          "fontSize": 24,
+                                          "color": [0.94, 0.92, 0.86, 1]
+                                        }
+                                      },
+                                      {
+                                        "type": "TextBlock",
+                                        "name": "RelicDevelopmentStatusText",
+                                        "slot": {
+                                          "padding": [0, 6, 0, 0]
+                                        },
+                                        "props": {
+                                          "text": "开发测试遗器会在打开角色面板时自动填充空槽。",
+                                          "fontSize": 14,
+                                          "color": [0.68, 0.72, 0.72, 1],
+                                          "autoWrap": true
+                                        },
+                                        "codegen": {
+                                          "bindWidget": true,
+                                          "mvvm": {
+                                            "destination": "Text",
+                                            "sourceViewModel": "ScreenViewModel",
+                                            "sourceField": "RelicDevelopmentStatusText"
+                                          }
+                                        }
+                                      }
+                                    ]
+                                  },
+                                  {
+                                    "type": "Button",
+                                    "name": "GrantRelicDevelopmentLoadoutButton",
+                                    "slot": {
+                                      "sizeRule": "auto",
+                                      "padding": [12, 0, 0, 0]
+                                    },
+                                    "props": {
+                                      "text": "生成测试遗器",
+                                      "fontSize": 16,
+                                      "brushColor": [0.22, 0.25, 0.27, 1],
+                                      "color": [0.95, 0.95, 0.92, 1]
+                                    },
+                                    "codegen": {
+                                      "bindWidget": true
+                                    },
+                                    "semantic": {
+                                      "role": "CharacterPanel.Relics.GrantDevelopmentLoadout"
+                                    }
+                                  }
+                                ]
+                              },
+                              {
+                                "type": "HorizontalBox",
+                                "name": "RelicsBodyRow",
+                                "slot": {
+                                  "sizeRule": "fill",
+                                  "fillWidth": 1
+                                },
+                                "children": [
+                                  {
+                                    "type": "SizeBox",
+                                    "name": "RelicOrbitArea",
+                                    "slot": {
+                                      "sizeRule": "fill",
+                                      "fillWidth": 0.66,
+                                      "padding": [0, 0, 16, 0]
+                                    },
+                                    "props": {
+                                      "widthOverride": 820,
+                                      "heightOverride": 660
+                                    },
+                                    "children": [
+                                      {
+                                        "type": "CanvasPanel",
+                                        "name": "RelicOrbitCanvas",
+                                        "children": [
+                                          {
+                                            "type": "Image",
+                                            "name": "RelicOrbitBackground",
+                                            "slot": {
+                                              "anchors": [0, 0, 0, 0],
+                                              "alignment": [0.5, 0.5],
+                                              "position": [410, 335],
+                                              "size": [520, 520]
+                                            },
+                                            "props": {
+                                              "desiredSize": [520, 520],
+                                              "brushColor": [0.11, 0.16, 0.24, 0.28]
+                                            }
+                                          },
+                                          {
+                                            "type": "Image",
+                                            "name": "RelicCharacterCenterImage",
+                                            "slot": {
+                                              "anchors": [0, 0, 0, 0],
+                                              "alignment": [0.5, 0.5],
+                                              "position": [410, 335],
+                                              "size": [280, 280]
+                                            },
+                                            "props": {
+                                              "desiredSize": [280, 280],
+                                              "brushColor": [0.18, 0.21, 0.26, 0.38]
+                                            }
+                                          },
+                                          {
+                                            "type": "Button",
+                                            "name": "RelicHeadSlotButton",
+                                            "slot": {
+                                              "anchors": [0, 0, 0, 0],
+                                              "alignment": [0.5, 0.5],
+                                              "position": [410, 115],
+                                              "size": [150, 170]
+                                            },
+                                            "props": {
+                                              "brushColor": [0.04, 0.05, 0.06, 0.16],
+                                              "color": [1, 1, 1, 1]
+                                            },
+                                            "codegen": {
+                                              "bindWidget": true
+                                            },
+                                            "children": [
+                                              {
+                                                "type": "VerticalBox",
+                                                "name": "RelicHeadSlotStack",
+                                                "slot": {
+                                                  "horizontalAlignment": "fill",
+                                                  "verticalAlignment": "fill",
+                                                  "padding": 0
+                                                },
+                                                "children": [
+                                                  {
+                                                    "type": "Image",
+                                                    "name": "RelicHeadIconImage",
+                                                    "slot": {
+                                                      "sizeRule": "fill",
+                                                      "fillWidth": 1,
+                                                      "horizontalAlignment": "fill",
+                                                      "verticalAlignment": "fill"
+                                                    },
+                                                    "props": {
+                                                      "desiredSize": [136, 136],
+                                                      "brushColor": [0.24, 0.27, 0.30, 0.55]
+                                                    },
+                                                    "codegen": {
+                                                      "bindWidget": true
+                                                    }
+                                                  },
+                                                  {
+                                                    "type": "TextBlock",
+                                                    "name": "RelicHeadLevelText",
+                                                    "props": {
+                                                      "text": "+0",
+                                                      "fontSize": 20,
+                                                      "color": [0.92, 0.78, 0.42, 1]
+                                                    },
+                                                    "codegen": {
+                                                      "bindWidget": true
+                                                    }
+                                                  },
+                                                  {
+                                                    "type": "TextBlock",
+                                                    "name": "RelicHeadNameText",
+                                                    "props": {
+                                                      "text": "",
+                                                      "fontSize": 1,
+                                                      "color": [0.82, 0.84, 0.84, 0]
+                                                    },
+                                                    "codegen": {
+                                                      "bindWidget": true
+                                                    }
+                                                  }
+                                                ]
+                                              }
+                                            ]
+                                          },
+                                          {
+                                            "type": "Button",
+                                            "name": "RelicHandsSlotButton",
+                                            "slot": {
+                                              "anchors": [0, 0, 0, 0],
+                                              "alignment": [0.5, 0.5],
+                                              "position": [150, 325],
+                                              "size": [150, 170]
+                                            },
+                                            "props": {
+                                              "brushColor": [0.04, 0.05, 0.06, 0.16],
+                                              "color": [1, 1, 1, 1]
+                                            },
+                                            "codegen": {
+                                              "bindWidget": true
+                                            },
+                                            "children": [
+                                              {
+                                                "type": "VerticalBox",
+                                                "name": "RelicHandsSlotStack",
+                                                "slot": {
+                                                  "horizontalAlignment": "fill",
+                                                  "verticalAlignment": "fill",
+                                                  "padding": 0
+                                                },
+                                                "children": [
+                                                  {
+                                                    "type": "Image",
+                                                    "name": "RelicHandsIconImage",
+                                                    "slot": {
+                                                      "sizeRule": "fill",
+                                                      "fillWidth": 1,
+                                                      "horizontalAlignment": "fill",
+                                                      "verticalAlignment": "fill"
+                                                    },
+                                                    "props": {
+                                                      "desiredSize": [136, 136],
+                                                      "brushColor": [0.24, 0.27, 0.30, 0.55]
+                                                    },
+                                                    "codegen": {
+                                                      "bindWidget": true
+                                                    }
+                                                  },
+                                                  {
+                                                    "type": "TextBlock",
+                                                    "name": "RelicHandsLevelText",
+                                                    "props": {
+                                                      "text": "+0",
+                                                      "fontSize": 20,
+                                                      "color": [0.92, 0.78, 0.42, 1]
+                                                    },
+                                                    "codegen": {
+                                                      "bindWidget": true
+                                                    }
+                                                  },
+                                                  {
+                                                    "type": "TextBlock",
+                                                    "name": "RelicHandsNameText",
+                                                    "props": {
+                                                      "text": "",
+                                                      "fontSize": 1,
+                                                      "color": [0.82, 0.84, 0.84, 0]
+                                                    },
+                                                    "codegen": {
+                                                      "bindWidget": true
+                                                    }
+                                                  }
+                                                ]
+                                              }
+                                            ]
+                                          },
+                                          {
+                                            "type": "Button",
+                                            "name": "RelicBodySlotButton",
+                                            "slot": {
+                                              "anchors": [0, 0, 0, 0],
+                                              "alignment": [0.5, 0.5],
+                                              "position": [670, 325],
+                                              "size": [150, 170]
+                                            },
+                                            "props": {
+                                              "brushColor": [0.04, 0.05, 0.06, 0.16],
+                                              "color": [1, 1, 1, 1]
+                                            },
+                                            "codegen": {
+                                              "bindWidget": true
+                                            },
+                                            "children": [
+                                              {
+                                                "type": "VerticalBox",
+                                                "name": "RelicBodySlotStack",
+                                                "slot": {
+                                                  "horizontalAlignment": "fill",
+                                                  "verticalAlignment": "fill",
+                                                  "padding": 0
+                                                },
+                                                "children": [
+                                                  {
+                                                    "type": "Image",
+                                                    "name": "RelicBodyIconImage",
+                                                    "slot": {
+                                                      "sizeRule": "fill",
+                                                      "fillWidth": 1,
+                                                      "horizontalAlignment": "fill",
+                                                      "verticalAlignment": "fill"
+                                                    },
+                                                    "props": {
+                                                      "desiredSize": [136, 136],
+                                                      "brushColor": [0.24, 0.27, 0.30, 0.55]
+                                                    },
+                                                    "codegen": {
+                                                      "bindWidget": true
+                                                    }
+                                                  },
+                                                  {
+                                                    "type": "TextBlock",
+                                                    "name": "RelicBodyLevelText",
+                                                    "props": {
+                                                      "text": "+0",
+                                                      "fontSize": 20,
+                                                      "color": [0.92, 0.78, 0.42, 1]
+                                                    },
+                                                    "codegen": {
+                                                      "bindWidget": true
+                                                    }
+                                                  },
+                                                  {
+                                                    "type": "TextBlock",
+                                                    "name": "RelicBodyNameText",
+                                                    "props": {
+                                                      "text": "",
+                                                      "fontSize": 1,
+                                                      "color": [0.82, 0.84, 0.84, 0]
+                                                    },
+                                                    "codegen": {
+                                                      "bindWidget": true
+                                                    }
+                                                  }
+                                                ]
+                                              }
+                                            ]
+                                          },
+                                          {
+                                            "type": "Button",
+                                            "name": "RelicFeetSlotButton",
+                                            "slot": {
+                                              "anchors": [0, 0, 0, 0],
+                                              "alignment": [0.5, 0.5],
+                                              "position": [410, 555],
+                                              "size": [150, 170]
+                                            },
+                                            "props": {
+                                              "brushColor": [0.04, 0.05, 0.06, 0.16],
+                                              "color": [1, 1, 1, 1]
+                                            },
+                                            "codegen": {
+                                              "bindWidget": true
+                                            },
+                                            "children": [
+                                              {
+                                                "type": "VerticalBox",
+                                                "name": "RelicFeetSlotStack",
+                                                "slot": {
+                                                  "horizontalAlignment": "fill",
+                                                  "verticalAlignment": "fill",
+                                                  "padding": 0
+                                                },
+                                                "children": [
+                                                  {
+                                                    "type": "Image",
+                                                    "name": "RelicFeetIconImage",
+                                                    "slot": {
+                                                      "sizeRule": "fill",
+                                                      "fillWidth": 1,
+                                                      "horizontalAlignment": "fill",
+                                                      "verticalAlignment": "fill"
+                                                    },
+                                                    "props": {
+                                                      "desiredSize": [136, 136],
+                                                      "brushColor": [0.24, 0.27, 0.30, 0.55]
+                                                    },
+                                                    "codegen": {
+                                                      "bindWidget": true
+                                                    }
+                                                  },
+                                                  {
+                                                    "type": "TextBlock",
+                                                    "name": "RelicFeetLevelText",
+                                                    "props": {
+                                                      "text": "+0",
+                                                      "fontSize": 20,
+                                                      "color": [0.92, 0.78, 0.42, 1]
+                                                    },
+                                                    "codegen": {
+                                                      "bindWidget": true
+                                                    }
+                                                  },
+                                                  {
+                                                    "type": "TextBlock",
+                                                    "name": "RelicFeetNameText",
+                                                    "props": {
+                                                      "text": "",
+                                                      "fontSize": 1,
+                                                      "color": [0.82, 0.84, 0.84, 0]
+                                                    },
+                                                    "codegen": {
+                                                      "bindWidget": true
+                                                    }
+                                                  }
+                                                ]
+                                              }
+                                            ]
+                                          },
+                                          {
+                                            "type": "Button",
+                                            "name": "RelicPlanarSphereSlotButton",
+                                            "slot": {
+                                              "anchors": [0, 0, 0, 0],
+                                              "alignment": [0.5, 0.5],
+                                              "position": [330, 385],
+                                              "size": [132, 152]
+                                            },
+                                            "props": {
+                                              "brushColor": [0.04, 0.05, 0.06, 0.16],
+                                              "color": [1, 1, 1, 1]
+                                            },
+                                            "codegen": {
+                                              "bindWidget": true
+                                            },
+                                            "children": [
+                                              {
+                                                "type": "VerticalBox",
+                                                "name": "RelicPlanarSphereSlotStack",
+                                                "slot": {
+                                                  "horizontalAlignment": "fill",
+                                                  "verticalAlignment": "fill",
+                                                  "padding": 0
+                                                },
+                                                "children": [
+                                                  {
+                                                    "type": "Image",
+                                                    "name": "RelicPlanarSphereIconImage",
+                                                    "slot": {
+                                                      "sizeRule": "fill",
+                                                      "fillWidth": 1,
+                                                      "horizontalAlignment": "fill",
+                                                      "verticalAlignment": "fill"
+                                                    },
+                                                    "props": {
+                                                      "desiredSize": [120, 120],
+                                                      "brushColor": [0.24, 0.27, 0.30, 0.55]
+                                                    },
+                                                    "codegen": {
+                                                      "bindWidget": true
+                                                    }
+                                                  },
+                                                  {
+                                                    "type": "TextBlock",
+                                                    "name": "RelicPlanarSphereLevelText",
+                                                    "props": {
+                                                      "text": "+0",
+                                                      "fontSize": 19,
+                                                      "color": [0.92, 0.78, 0.42, 1]
+                                                    },
+                                                    "codegen": {
+                                                      "bindWidget": true
+                                                    }
+                                                  },
+                                                  {
+                                                    "type": "TextBlock",
+                                                    "name": "RelicPlanarSphereNameText",
+                                                    "props": {
+                                                      "text": "",
+                                                      "fontSize": 1,
+                                                      "color": [0.82, 0.84, 0.84, 0]
+                                                    },
+                                                    "codegen": {
+                                                      "bindWidget": true
+                                                    }
+                                                  }
+                                                ]
+                                              }
+                                            ]
+                                          },
+                                          {
+                                            "type": "Button",
+                                            "name": "RelicLinkRopeSlotButton",
+                                            "slot": {
+                                              "anchors": [0, 0, 0, 0],
+                                              "alignment": [0.5, 0.5],
+                                              "position": [490, 385],
+                                              "size": [132, 152]
+                                            },
+                                            "props": {
+                                              "brushColor": [0.04, 0.05, 0.06, 0.16],
+                                              "color": [1, 1, 1, 1]
+                                            },
+                                            "codegen": {
+                                              "bindWidget": true
+                                            },
+                                            "children": [
+                                              {
+                                                "type": "VerticalBox",
+                                                "name": "RelicLinkRopeSlotStack",
+                                                "slot": {
+                                                  "horizontalAlignment": "fill",
+                                                  "verticalAlignment": "fill",
+                                                  "padding": 0
+                                                },
+                                                "children": [
+                                                  {
+                                                    "type": "Image",
+                                                    "name": "RelicLinkRopeIconImage",
+                                                    "slot": {
+                                                      "sizeRule": "fill",
+                                                      "fillWidth": 1,
+                                                      "horizontalAlignment": "fill",
+                                                      "verticalAlignment": "fill"
+                                                    },
+                                                    "props": {
+                                                      "desiredSize": [120, 120],
+                                                      "brushColor": [0.24, 0.27, 0.30, 0.55]
+                                                    },
+                                                    "codegen": {
+                                                      "bindWidget": true
+                                                    }
+                                                  },
+                                                  {
+                                                    "type": "TextBlock",
+                                                    "name": "RelicLinkRopeLevelText",
+                                                    "props": {
+                                                      "text": "+0",
+                                                      "fontSize": 19,
+                                                      "color": [0.92, 0.78, 0.42, 1]
+                                                    },
+                                                    "codegen": {
+                                                      "bindWidget": true
+                                                    }
+                                                  },
+                                                  {
+                                                    "type": "TextBlock",
+                                                    "name": "RelicLinkRopeNameText",
+                                                    "props": {
+                                                      "text": "",
+                                                      "fontSize": 1,
+                                                      "color": [0.82, 0.84, 0.84, 0]
+                                                    },
+                                                    "codegen": {
+                                                      "bindWidget": true
+                                                    }
+                                                  }
+                                                ]
+                                              }
+                                            ]
+                                          }
+                                        ]
+                                      }
+                                    ]
+                                  },
+                                  {
+                                    "type": "VerticalBox",
+                                    "name": "RelicDetailColumn",
+                                    "slot": {
+                                      "sizeRule": "fill",
+                                      "fillWidth": 0.34
+                                    },
+                                    "children": [
+                                      {
+                                        "type": "TextBlock",
+                                        "name": "RelicStatsHeaderText",
+                                        "slot": {
+                                          "sizeRule": "auto",
+                                          "padding": [0, 0, 0, 8]
+                                        },
+                                        "props": {
+                                          "text": "角色属性",
+                                          "fontSize": 18,
+                                          "color": [0.88, 0.9, 0.9, 1]
+                                        }
+                                      },
+                                      {
+                                        "type": "TextBlock",
+                                        "name": "RelicCharacterStatsText",
+                                        "slot": {
+                                          "sizeRule": "auto",
+                                          "padding": [0, 0, 0, 18]
+                                        },
+                                        "props": {
+                                          "text": "遗器属性预览",
+                                          "fontSize": 15,
+                                          "color": [0.78, 0.82, 0.82, 1],
+                                          "autoWrap": true
+                                        },
+                                        "codegen": {
+                                          "bindWidget": true,
+                                          "mvvm": {
+                                            "destination": "Text",
+                                            "sourceViewModel": "ScreenViewModel",
+                                            "sourceField": "RelicCharacterStatsText"
+                                          }
+                                        }
+                                      },
+                                      {
+                                        "type": "Border",
+                                        "name": "SelectedRelicPanel",
+                                        "slot": {
+                                          "sizeRule": "auto",
+                                          "padding": [0, 0, 0, 18]
+                                        },
+                                        "props": {
+                                          "brushColor": [0.14, 0.16, 0.18, 0.95],
+                                          "padding": [14, 14, 14, 14]
+                                        },
+                                        "children": [
+                                          {
+                                            "type": "VerticalBox",
+                                            "name": "SelectedRelicStack",
+                                            "children": [
+                                              {
+                                                "type": "TextBlock",
+                                                "name": "SelectedRelicNameText",
+                                                "props": {
+                                                  "text": "未装备",
+                                                  "fontSize": 20,
+                                                  "color": [0.94, 0.92, 0.86, 1]
+                                                },
+                                                "codegen": {
+                                                  "bindWidget": true,
+                                                  "mvvm": {
+                                                    "destination": "Text",
+                                                    "sourceViewModel": "ScreenViewModel",
+                                                    "sourceField": "SelectedRelicNameText"
+                                                  }
+                                                }
+                                              },
+                                              {
+                                                "type": "TextBlock",
+                                                "name": "SelectedRelicMetaText",
+                                                "slot": {
+                                                  "padding": [0, 5, 0, 0]
+                                                },
+                                                "props": {
+                                                  "text": "槽位 / 套装 / 等级",
+                                                  "fontSize": 14,
+                                                  "color": [0.68, 0.72, 0.72, 1],
+                                                  "autoWrap": true
+                                                },
+                                                "codegen": {
+                                                  "bindWidget": true,
+                                                  "mvvm": {
+                                                    "destination": "Text",
+                                                    "sourceViewModel": "ScreenViewModel",
+                                                    "sourceField": "SelectedRelicMetaText"
+                                                  }
+                                                }
+                                              },
+                                              {
+                                                "type": "TextBlock",
+                                                "name": "SelectedRelicMainAffixText",
+                                                "slot": {
+                                                  "padding": [0, 12, 0, 0]
+                                                },
+                                                "props": {
+                                                  "text": "主词条",
+                                                  "fontSize": 17,
+                                                  "color": [0.88, 0.9, 0.9, 1]
+                                                },
+                                                "codegen": {
+                                                  "bindWidget": true,
+                                                  "mvvm": {
+                                                    "destination": "Text",
+                                                    "sourceViewModel": "ScreenViewModel",
+                                                    "sourceField": "SelectedRelicMainAffixText"
+                                                  }
+                                                }
+                                              },
+                                              {
+                                                "type": "Button",
+                                                "name": "RelicDetailToggleButton",
+                                                "slot": {
+                                                  "padding": [0, 12, 0, 8]
+                                                },
+                                                "props": {
+                                                  "brushColor": [0.24, 0.27, 0.30, 1],
+                                                  "color": [0.94, 0.94, 0.9, 1]
+                                                },
+                                                "codegen": {
+                                                  "bindWidget": true
+                                                },
+                                                "children": [
+                                                  {
+                                                    "type": "TextBlock",
+                                                    "name": "RelicDetailToggleButtonText",
+                                                    "props": {
+                                                      "text": "展开详情",
+                                                      "fontSize": 15,
+                                                      "color": [0.94, 0.94, 0.9, 1]
+                                                    },
+                                                    "codegen": {
+                                                      "bindWidget": true,
+                                                      "mvvm": {
+                                                        "destination": "Text",
+                                                        "sourceViewModel": "ScreenViewModel",
+                                                        "sourceField": "RelicDetailButtonText"
+                                                      }
+                                                    }
+                                                  }
+                                                ]
+                                              },
+                                              {
+                                                "type": "TextBlock",
+                                                "name": "SelectedRelicDetailText",
+                                                "props": {
+                                                  "text": "详情",
+                                                  "fontSize": 14,
+                                                  "color": [0.72, 0.76, 0.76, 1],
+                                                  "autoWrap": true
+                                                },
+                                                "codegen": {
+                                                  "bindWidget": true,
+                                                  "mvvm": {
+                                                    "destination": "Text",
+                                                    "sourceViewModel": "ScreenViewModel",
+                                                    "sourceField": "SelectedRelicDetailText"
+                                                  }
+                                                }
+                                              }
+                                            ]
+                                          }
+                                        ]
+                                      },
+                                      {
+                                        "type": "TextBlock",
+                                        "name": "RelicSetSummaryHeaderText",
+                                        "slot": {
+                                          "sizeRule": "auto",
+                                          "padding": [0, 0, 0, 8]
+                                        },
+                                        "props": {
+                                          "text": "套装效果",
+                                          "fontSize": 18,
+                                          "color": [0.88, 0.9, 0.9, 1]
+                                        }
+                                      },
+                                      {
+                                        "type": "TextBlock",
+                                        "name": "RelicSetSummaryText",
+                                        "slot": {
+                                          "sizeRule": "fill",
+                                          "fillWidth": 1
+                                        },
+                                        "props": {
+                                          "text": "暂无套装效果",
+                                          "fontSize": 14,
+                                          "color": [0.70, 0.80, 0.74, 1],
+                                          "autoWrap": true
+                                        },
+                                        "codegen": {
+                                          "bindWidget": true,
+                                          "mvvm": {
+                                            "destination": "Text",
+                                            "sourceViewModel": "ScreenViewModel",
+                                            "sourceField": "RelicSetSummaryText"
+                                          }
+                                        }
+                                      }
+                                    ]
+                                  }
+                                ]
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "type": "Border",
+                        "name": "EidolonsPage",
+                        "props": {
+                          "brushColor": [0.105, 0.12, 0.13, 1],
+                          "padding": [24, 24, 24, 24]
+                        },
+                        "children": [
+                          {
+                            "type": "TextBlock",
+                            "name": "EidolonsPlaceholderText",
+                            "props": {
+                              "text": "Eidolons page placeholder",
+                              "fontSize": 20,
+                              "color": [0.82, 0.84, 0.84, 1]
+                            }
+                          }
+                        ]
+                      },
+                      {
+                        "type": "Border",
+                        "name": "InfoPage",
+                        "props": {
+                          "brushColor": [0.105, 0.12, 0.13, 1],
+                          "padding": [24, 24, 24, 24]
+                        },
+                        "children": [
+                          {
+                            "type": "ScrollBox",
+                            "name": "InfoScrollBox",
+                            "props": {
+                              "orientation": "vertical"
+                            },
+                            "children": [
+                              {
+                                "type": "VerticalBox",
+                                "name": "InfoContentStack",
+                                "children": [
+                                  {
+                                    "type": "TextBlock",
+                                    "name": "InfoNameText",
+                                    "slot": {
+                                      "padding": [0, 0, 0, 10]
+                                    },
+                                    "props": {
+                                      "text": "Stelle",
+                                      "fontSize": 26,
+                                      "color": [0.94, 0.92, 0.86, 1]
+                                    },
+                                    "codegen": {
+                                      "bindWidget": true,
+                                      "mvvm": {
+                                        "destination": "Text",
+                                        "sourceViewModel": "ScreenViewModel",
+                                        "sourceField": "CharacterNameText"
+                                      }
+                                    }
+                                  },
+                                  {
+                                    "type": "TextBlock",
+                                    "name": "InfoFirstMetDateText",
+                                    "slot": {
+                                      "padding": [0, 0, 0, 18]
+                                    },
+                                    "props": {
+                                      "text": "Herta Space Station",
+                                      "fontSize": 18,
+                                      "color": [0.78, 0.8, 0.78, 1]
+                                    },
+                                    "codegen": {
+                                      "bindWidget": true,
+                                      "mvvm": {
+                                        "destination": "Text",
+                                        "sourceViewModel": "ScreenViewModel",
+                                        "sourceField": "CharacterFirstMetDateText"
+                                      }
+                                    }
+                                  },
+                                  {
+                                    "type": "TextBlock",
+                                    "name": "InfoShortBioText",
+                                    "slot": {
+                                      "padding": [0, 0, 0, 24]
+                                    },
+                                    "props": {
+                                      "text": "Character bio",
+                                      "fontSize": 17,
+                                      "color": [0.76, 0.78, 0.76, 1],
+                                      "autoWrap": true
+                                    },
+                                    "codegen": {
+                                      "bindWidget": true,
+                                      "mvvm": {
+                                        "destination": "Text",
+                                        "sourceViewModel": "ScreenViewModel",
+                                        "sourceField": "CharacterShortBioText"
+                                      }
+                                    }
+                                  },
+                                  {
+                                    "type": "ListView",
+                                    "name": "StoryListView",
+                                    "slot": {
+                                      "padding": [0, 0, 0, 14]
+                                    },
+                                    "props": {
+                                      "entryWidgetClass": "CharacterStoryListItemRow",
+                                      "generatePreviewEntryWidget": false
+                                    },
+                                    "codegen": {
+                                      "bindWidget": true
+                                    },
+                                    "semantic": {
+                                      "role": "CharacterPanel.Info.StoryList"
+                                    }
+                                  },
+                                  {
+                                    "type": "TextBlock",
+                                    "name": "SelectedStoryTitleText",
+                                    "slot": {
+                                      "padding": [0, 0, 0, 10]
+                                    },
+                                    "props": {
+                                      "text": "Character Story I",
+                                      "fontSize": 22,
+                                      "color": [0.94, 0.92, 0.86, 1]
+                                    },
+                                    "codegen": {
+                                      "bindWidget": true,
+                                      "mvvm": {
+                                        "destination": "Text",
+                                        "sourceViewModel": "ScreenViewModel",
+                                        "sourceField": "SelectedStoryTitleText"
+                                      }
+                                    }
+                                  },
+                                  {
+                                    "type": "RichTextBlock",
+                                    "name": "SelectedStoryBodyText",
+                                    "props": {
+                                      "text": "<Title>Awakening</>\nStory body",
+                                      "fontSize": 17,
+                                      "color": [0.76, 0.78, 0.76, 1],
+                                      "autoWrap": true
+                                    },
+                                    "codegen": {
+                                      "bindWidget": true,
+                                      "mvvm": {
+                                        "destination": "Text",
+                                        "sourceViewModel": "ScreenViewModel",
+                                        "sourceField": "SelectedStoryBodyText"
+                                      }
+                                    },
+                                    "semantic": {
+                                      "role": "CharacterPanel.Info.StoryBody"
+                                    }
+                                  }
+                                ]
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

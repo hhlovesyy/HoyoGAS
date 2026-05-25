@@ -1,0 +1,382 @@
+{
+  "version": "1.0",
+  "widgetBlueprintName": "WBP_BattleScreen",
+  "parentClass": "MyMVVMScreenBase",
+  "root": {
+    "type": "CanvasPanel",
+    "name": "RootCanvas",
+    "codegen": {
+      "bindWidget": true
+    },
+    "children": [
+      {
+        "type": "Border",
+        "name": "EncounterBadge",
+        "slot": {
+          "anchors": [0.0, 0.0, 0.0, 0.0],
+          "position": [48, 36],
+          "size": [360, 84]
+        },
+        "props": {
+          "brushColor": [0.08, 0.0, 0.0, 0.86],
+          "padding": [20, 12, 20, 12]
+        },
+        "children": [
+          {
+            "type": "HorizontalBox",
+            "name": "EncounterBadgeRow",
+            "children": [
+              {
+                "type": "Border",
+                "name": "EncounterAccent",
+                "slot": {
+                  "padding": [0, 0, 16, 0],
+                  "alignment": [0.5, 0.5]
+                },
+                "props": {
+                  "brushColor": [0.93, 0.08, 0.34, 1.0],
+                  "desiredSize": [8, 48]
+                }
+              },
+              {
+                "type": "VerticalBox",
+                "name": "EncounterTextColumn",
+                "slot": {
+                  "alignment": [0.0, 0.5]
+                },
+                "children": [
+                  {
+                    "type": "CommonTextBlock",
+                    "name": "EncounterLabelText",
+                    "props": {
+                      "text": "ENCOUNTER",
+                      "fontSize": 14,
+                      "color": [0.92, 0.8, 0.82, 0.85]
+                    }
+                  },
+                  {
+                    "type": "CommonTextBlock",
+                    "name": "EncounterTitleText",
+                    "codegen": {
+                      "bindWidget": true
+                    },
+                    "semantic": {
+                      "role": "battle.encounterTitle"
+                    },
+                    "props": {
+                      "text": "Battle Start",
+                      "fontSize": 28,
+                      "color": [1.0, 1.0, 1.0, 1.0]
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "Border",
+        "name": "TargetInfoPanel",
+        "codegen": {
+          "bindWidget": true
+        },
+        "semantic": {
+          "role": "battle.targetInfo"
+        },
+        "slot": {
+          "anchors": [1.0, 0.0, 1.0, 0.0],
+          "position": [-400, 48],
+          "size": [352, 208],
+          "alignment": [0.0, 0.0]
+        },
+        "props": {
+          "brushColor": [0.04, 0.01, 0.01, 0.9],
+          "padding": [22, 18, 22, 18]
+        },
+        "children": [
+          {
+            "type": "VerticalBox",
+            "name": "TargetInfoColumn",
+            "children": [
+              {
+                "type": "CommonTextBlock",
+                "name": "TargetStateText",
+                "codegen": {
+                  "bindWidget": true
+                },
+                "semantic": {
+                  "role": "battle.targetState"
+                },
+                "slot": {
+                  "padding": [0, 0, 0, 6]
+                },
+                "props": {
+                  "text": "TARGET",
+                  "fontSize": 13,
+                  "color": [1.0, 0.46, 0.63, 0.94]
+                }
+              },
+              {
+                "type": "CommonTextBlock",
+                "name": "TargetNameText",
+                "codegen": {
+                  "bindWidget": true
+                },
+                "semantic": {
+                  "role": "battle.targetName"
+                },
+                "slot": {
+                  "padding": [0, 0, 0, 8]
+                },
+                "props": {
+                  "text": "No Target",
+                  "fontSize": 30,
+                  "color": [1.0, 1.0, 1.0, 1.0]
+                }
+              },
+              {
+                "type": "HorizontalBox",
+                "name": "TargetMetaRow",
+                "slot": {
+                  "padding": [0, 0, 0, 14]
+                },
+                "children": [
+                  {
+                    "type": "CommonTextBlock",
+                    "name": "TargetLevelText",
+                    "codegen": {
+                      "bindWidget": true
+                    },
+                    "semantic": {
+                      "role": "battle.targetLevel"
+                    },
+                    "slot": {
+                      "padding": [0, 0, 16, 0]
+                    },
+                    "props": {
+                      "text": "LV 1",
+                      "fontSize": 18,
+                      "color": [0.86, 0.86, 0.92, 1.0]
+                    }
+                  },
+                  {
+                    "type": "CommonTextBlock",
+                    "name": "TargetAffinityText",
+                    "codegen": {
+                      "bindWidget": true
+                    },
+                    "semantic": {
+                      "role": "battle.targetAffinity"
+                    },
+                    "props": {
+                      "text": "Unknown",
+                      "fontSize": 18,
+                      "color": [0.92, 0.78, 0.35, 1.0]
+                    }
+                  }
+                ]
+              },
+              {
+                "type": "Border",
+                "name": "TargetHintSurface",
+                "props": {
+                  "brushColor": [0.12, 0.02, 0.03, 0.9],
+                  "padding": [14, 10, 14, 10]
+                },
+                "children": [
+                  {
+                    "type": "CommonTextBlock",
+                    "name": "TargetHintText",
+                    "codegen": {
+                      "bindWidget": true
+                    },
+                    "semantic": {
+                      "role": "battle.targetHint"
+                    },
+                    "props": {
+                      "text": "Hover an enemy and click to confirm.",
+                      "fontSize": 15,
+                      "autoWrap": true,
+                      "color": [0.95, 0.95, 0.95, 0.92]
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "Border",
+        "name": "CommandPanel",
+        "codegen": {
+          "bindWidget": true
+        },
+        "semantic": {
+          "role": "battle.commandPanel"
+        },
+        "slot": {
+          "anchors": [0.5, 1.0, 0.5, 1.0],
+          "position": [0, -64],
+          "size": [1040, 152],
+          "alignment": [0.5, 1.0]
+        },
+        "props": {
+          "brushColor": [0.04, 0.0, 0.0, 0.92],
+          "padding": [28, 22, 28, 22]
+        },
+        "children": [
+          {
+            "type": "VerticalBox",
+            "name": "CommandColumn",
+            "children": [
+              {
+                "type": "HorizontalBox",
+                "name": "CommandHeaderRow",
+                "slot": {
+                  "padding": [0, 0, 0, 14]
+                },
+                "children": [
+                  {
+                    "type": "CommonTextBlock",
+                    "name": "CurrentActorText",
+                    "codegen": {
+                      "bindWidget": true
+                    },
+                    "semantic": {
+                      "role": "battle.currentActor"
+                    },
+                    "slot": {
+                      "padding": [0, 0, 20, 0]
+                    },
+                    "props": {
+                      "text": "Player Turn",
+                      "fontSize": 24,
+                      "color": [1.0, 1.0, 1.0, 1.0]
+                    }
+                  },
+                  {
+                    "type": "CommonTextBlock",
+                    "name": "CommandHintText",
+                    "codegen": {
+                      "bindWidget": true
+                    },
+                    "semantic": {
+                      "role": "battle.commandHint"
+                    },
+                    "props": {
+                      "text": "Choose an action",
+                      "fontSize": 18,
+                      "color": [0.92, 0.78, 0.35, 1.0]
+                    }
+                  }
+                ]
+              },
+              {
+                "type": "HorizontalBox",
+                "name": "CommandButtonRow",
+                "children": [
+                  {
+                    "type": "Button",
+                    "name": "AttackButton",
+                    "codegen": {
+                      "bindWidget": true
+                    },
+                    "semantic": {
+                      "role": "battle.command.attack"
+                    },
+                    "slot": {
+                      "padding": [0, 0, 16, 0]
+                    },
+                    "props": {
+                      "text": "ATTACK",
+                      "fontSize": 20,
+                      "color": [1.0, 1.0, 1.0, 1.0],
+                      "brushColor": [0.85, 0.1, 0.25, 1.0]
+                    }
+                  },
+                  {
+                    "type": "Button",
+                    "name": "SkillButton",
+                    "codegen": {
+                      "bindWidget": true
+                    },
+                    "semantic": {
+                      "role": "battle.command.skill"
+                    },
+                    "slot": {
+                      "padding": [0, 0, 16, 0]
+                    },
+                    "props": {
+                      "text": "SKILL",
+                      "fontSize": 20,
+                      "color": [1.0, 1.0, 1.0, 1.0],
+                      "brushColor": [0.25, 0.08, 0.78, 1.0]
+                    }
+                  },
+                  {
+                    "type": "Button",
+                    "name": "GuardButton",
+                    "codegen": {
+                      "bindWidget": true
+                    },
+                    "semantic": {
+                      "role": "battle.command.guard"
+                    },
+                    "slot": {
+                      "padding": [0, 0, 16, 0]
+                    },
+                    "props": {
+                      "text": "GUARD",
+                      "fontSize": 20,
+                      "color": [1.0, 1.0, 1.0, 1.0],
+                      "brushColor": [0.17, 0.17, 0.22, 1.0]
+                    }
+                  },
+                  {
+                    "type": "Button",
+                    "name": "PersonaButton",
+                    "codegen": {
+                      "bindWidget": true
+                    },
+                    "semantic": {
+                      "role": "battle.command.persona"
+                    },
+                    "props": {
+                      "text": "PERSONA",
+                      "fontSize": 20,
+                      "color": [1.0, 1.0, 1.0, 1.0],
+                      "brushColor": [0.93, 0.45, 0.08, 1.0]
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "CommonTextBlock",
+        "name": "ReticleDebugText",
+        "codegen": {
+          "bindWidget": true
+        },
+        "semantic": {
+          "role": "battle.reticleDebug"
+        },
+        "slot": {
+          "anchors": "center",
+          "position": [0, -180],
+          "size": [320, 40],
+          "alignment": [0.5, 0.5]
+        },
+        "props": {
+          "text": "[TARGET]",
+          "fontSize": 22,
+          "color": [1.0, 0.35, 0.55, 0.9]
+        }
+      }
+    ]
+  }
+}

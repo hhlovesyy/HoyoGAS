@@ -1,0 +1,71 @@
+[
+  {
+    "Name": "Trailblazer_Stelle",
+    "CharacterId": "Trailblazer_Stelle",
+    "DisplayName": "星",
+    "Title": "银河间的旅人",
+    "PathName": "毁灭",
+    "PathTag": "(TagName=\"Character.Path.Destruction\")",
+    "FactionName": "星穹列车",
+    "ElementName": "物理",
+    "ElementTag": "(TagName=\"Character.Element.Physical\")",
+    "FirstMetDateText": "黑塔空间站",
+    "Rarity": 5,
+    "DefaultLevel": 1,
+    "MaxLevel": 80,
+    "PortraitTexture": "",
+    "ShortBio": "被唤醒于空间站的少女，体内承载着星核的力量。她随星穹列车踏上旅途，在一次次开拓中寻找自己的来处与未来。",
+    "Stories": [
+      {
+        "StoryId": "Story_01",
+        "Title": "角色故事·一",
+        "RichTextBody": "<Title>醒来</>\n她睁开眼时，陌生的天花板、警报声和脚步声同时涌入感官。记忆像被拆散的碎片，只有胸口深处的微光提醒她：自己并非空无一物。\n\n<Emphasis>星核</>沉默地停留在体内，像一枚尚未给出答案的谜题。",
+        "UnlockConditions": {
+          "bMatchAll": true,
+          "Conditions": []
+        },
+        "LockedReasonText": ""
+      },
+      {
+        "StoryId": "Story_02",
+        "Title": "角色故事·二",
+        "RichTextBody": "<Title>列车</>\n星穹列车停靠时，她第一次意识到“前进”也可以成为一种选择。站台、车窗、同行者的声音，都在告诉她：答案不一定藏在过去，也可能写在下一站。\n\n她接受了邀请，成为开拓旅途的一员。",
+        "UnlockConditions": {
+          "bMatchAll": true,
+          "Conditions": [
+            {
+              "CheckTag": "(TagName=\"Check.Counter\")",
+              "TargetTag": "(TagName=\"Progress.Counter.HoyoEffectPickup\")",
+              "Operator": "GreaterOrEqual",
+              "ExpectedValue": {
+                "ValueType": "Int",
+                "IntValue": 3
+              }
+            }
+          ]
+        },
+        "LockedReasonText": "拾取 3 个效果物后解锁。"
+      },
+      {
+        "StoryId": "Story_03",
+        "Title": "角色故事·三",
+        "RichTextBody": "<Title>道路</>\n每个世界都有自己的困境，每次选择都会留下新的痕迹。她不总是确信自己做得足够好，但她学会了把疑问带上路。\n\n所谓开拓，或许正是在没有标准答案的地方，仍然向前迈出一步。",
+        "UnlockConditions": {
+          "bMatchAll": true,
+          "Conditions": [
+            {
+              "CheckTag": "(TagName=\"Check.Counter\")",
+              "TargetTag": "(TagName=\"Progress.Counter.HoyoEffectPickup\")",
+              "Operator": "GreaterOrEqual",
+              "ExpectedValue": {
+                "ValueType": "Int",
+                "IntValue": 6
+              }
+            }
+          ]
+        },
+        "LockedReasonText": "拾取 6 个效果物后解锁。"
+      }
+    ]
+  }
+]

@@ -1,0 +1,60 @@
+[
+  {
+    "Name": "Musketeer",
+    "SetId": "Musketeer",
+    "DisplayName": "野穗伴行的快枪手",
+    "SetTag": "(TagName=\"Relic.Set.Musketeer\")",
+    "Description": "泛用攻击型遗器套装。",
+    "Bonuses": [
+      {
+        "RequiredPieceCount": 2,
+        "Description": "二件套：攻击力提高 12%。",
+        "Modifiers": [
+          {
+            "StatTag": "(TagName=\"Relic.Stat.AttackPercent\")",
+            "TargetAttribute": "(AttributeName=\"AttackPower\",AttributeOwner=\"/Script/HoyoGas.HoyoAttributeSet\")",
+            "ModifierOp": "Additive",
+            "ValueType": "Percent",
+            "Value": 0.12
+          }
+        ],
+        "GameplayEffectClass": ""
+      },
+      {
+        "RequiredPieceCount": 4,
+        "Description": "四件套：速度提高 6%，普通攻击造成的伤害提高 10%。当前项目暂无速度/普攻伤害属性，先作为描述和后续扩展预留。",
+        "Modifiers": [],
+        "GameplayEffectClass": ""
+      }
+    ]
+  },
+  {
+    "Name": "WutheringSnow",
+    "SetId": "WutheringSnow",
+    "DisplayName": "戍卫风雪的铁卫",
+    "SetTag": "(TagName=\"Relic.Set.WutheringSnow\")",
+    "Description": "偏生存向的防御遗器套装。",
+    "Bonuses": [
+      {
+        "RequiredPieceCount": 2,
+        "Description": "二件套：防御力提高 15%。",
+        "Modifiers": [
+          {
+            "StatTag": "(TagName=\"Relic.Stat.DefensePercent\")",
+            "TargetAttribute": "(AttributeName=\"Defense\",AttributeOwner=\"/Script/HoyoGas.HoyoAttributeSet\")",
+            "ModifierOp": "Additive",
+            "ValueType": "Percent",
+            "Value": 0.15
+          }
+        ],
+        "GameplayEffectClass": ""
+      },
+      {
+        "RequiredPieceCount": 4,
+        "Description": "四件套：受到伤害降低并在回合开始时回复生命。当前项目暂无回合制触发点，先作为描述和后续 GE 预留。",
+        "Modifiers": [],
+        "GameplayEffectClass": ""
+      }
+    ]
+  }
+]

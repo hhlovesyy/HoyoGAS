@@ -1,0 +1,23 @@
+{
+  "FileVersion": 3,
+  "Version": 1,
+  "VersionName": "0.1.0",
+  "FriendlyName": "Skirt Correction",
+  "Description": "Post-process skirt correction node for runtime retargeted characters.",
+  "Category": "Animation",
+  "CanContainContent": false,
+  "IsBetaVersion": true,
+  "Installed": false,
+  "Modules": [
+    {
+      "Name": "SkirtCorrectionRuntime",
+      "Type": "Runtime",
+      "LoadingPhase": "PostConfigInit"
+    },
+    {
+      "Name": "SkirtCorrectionEditor",
+      "Type": "UncookedOnly",
+      "LoadingPhase": "PreDefault"
+    }
+  ]
+}

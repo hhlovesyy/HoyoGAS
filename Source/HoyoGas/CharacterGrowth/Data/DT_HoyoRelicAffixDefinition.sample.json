@@ -1,0 +1,56 @@
+[
+  {
+    "Name": "HPFlat",
+    "AffixId": "HPFlat",
+    "DisplayName": "生命值",
+    "AffixTag": "(TagName=\"Relic.Affix.HPFlat\")",
+    "TargetAttribute": "(AttributeName=\"MaxHealth\",AttributeOwner=\"/Script/HoyoGas.HoyoAttributeSet\")",
+    "ModifierOp": "Additive",
+    "ValueType": "Flat"
+  },
+  {
+    "Name": "AttackFlat",
+    "AffixId": "AttackFlat",
+    "DisplayName": "攻击力",
+    "AffixTag": "(TagName=\"Relic.Affix.AttackFlat\")",
+    "TargetAttribute": "(AttributeName=\"AttackPower\",AttributeOwner=\"/Script/HoyoGas.HoyoAttributeSet\")",
+    "ModifierOp": "Additive",
+    "ValueType": "Flat"
+  },
+  {
+    "Name": "AttackPercent",
+    "AffixId": "AttackPercent",
+    "DisplayName": "攻击力",
+    "AffixTag": "(TagName=\"Relic.Affix.AttackPercent\")",
+    "TargetAttribute": "(AttributeName=\"AttackPower\",AttributeOwner=\"/Script/HoyoGas.HoyoAttributeSet\")",
+    "ModifierOp": "Additive",
+    "ValueType": "Percent"
+  },
+  {
+    "Name": "CritRate",
+    "AffixId": "CritRate",
+    "DisplayName": "暴击率",
+    "AffixTag": "(TagName=\"Relic.Affix.CritRate\")",
+    "TargetAttribute": "(AttributeName=\"CritRate\",AttributeOwner=\"/Script/HoyoGas.HoyoAttributeSet\")",
+    "ModifierOp": "Additive",
+    "ValueType": "Percent"
+  },
+  {
+    "Name": "CritDamage",
+    "AffixId": "CritDamage",
+    "DisplayName": "暴击伤害",
+    "AffixTag": "(TagName=\"Relic.Affix.CritDamage\")",
+    "TargetAttribute": "(AttributeName=\"CritDamage\",AttributeOwner=\"/Script/HoyoGas.HoyoAttributeSet\")",
+    "ModifierOp": "Additive",
+    "ValueType": "Percent"
+  },
+  {
+    "Name": "EnergyRecharge",
+    "AffixId": "EnergyRecharge",
+    "DisplayName": "能量恢复效率",
+    "AffixTag": "(TagName=\"Relic.Affix.EnergyRecharge\")",
+    "TargetAttribute": "(AttributeName=\"EnergyRecharge\",AttributeOwner=\"/Script/HoyoGas.HoyoAttributeSet\")",
+    "ModifierOp": "Additive",
+    "ValueType": "Percent"
+  }
+]

@@ -1,0 +1,74 @@
+[
+  {
+    "Name": "Pickup_HoyoEffect_Three",
+    "AchievementId": "Pickup_HoyoEffect_Three",
+    "Title": "\u521d\u8bd5\u6548\u679c",
+    "Description": "\u62fe\u53d6 3 \u4e2a HoyoEffectActor\u3002",
+    "UnlockConditions": {
+      "bMatchAll": true,
+      "Conditions": [
+        {
+          "CheckTag": "(TagName=\"Check.Counter\")",
+          "TargetTag": "(TagName=\"Progress.Counter.HoyoEffectPickup\")",
+          "Operator": "GreaterOrEqual",
+          "ExpectedValue": {
+            "ValueType": "Int",
+            "IntValue": 3
+          }
+        }
+      ]
+    },
+    "ToastMessage": "\u6210\u5c31\u89e3\u9501\uff1a\u521d\u8bd5\u6548\u679c"
+  },
+  {
+    "Name": "First_Player_Health_Decreased",
+    "AchievementId": "First_Player_Health_Decreased",
+    "Title": "\u5403\u6bd2\u8611\u83c7\u4e86",
+    "Description": "\u7b2c\u4e00\u6b21\u751f\u547d\u503c\u4e0b\u964d\u3002",
+    "UnlockConditions": {
+      "bMatchAll": true,
+      "Conditions": [
+        {
+          "CheckTag": "(TagName=\"Check.Counter\")",
+          "TargetTag": "(TagName=\"Progress.Counter.Player.HealthDecreased\")",
+          "Operator": "GreaterOrEqual",
+          "ExpectedValue": {
+            "ValueType": "Int",
+            "IntValue": 1
+          }
+        }
+      ]
+    },
+    "ToastMessage": "\u6210\u5c31\u89e3\u9501\uff1a\u5403\u6bd2\u8611\u83c7\u4e86"
+  },
+  {
+    "Name": "Unlock_Two_Beginner_Achievements",
+    "AchievementId": "Unlock_Two_Beginner_Achievements",
+    "Title": "\u521d\u7aa5\u95e8\u5f84",
+    "Description": "\u89e3\u9501\u4e24\u4e2a\u5165\u95e8\u6210\u5c31\u3002",
+    "UnlockConditions": {
+      "bMatchAll": true,
+      "Conditions": [
+        {
+          "CheckTag": "(TagName=\"Check.AchievementUnlocked\")",
+          "TargetTag": "",
+          "Operator": "Equal",
+          "ExpectedValue": {
+            "ValueType": "String",
+            "StringValue": "Pickup_HoyoEffect_Three"
+          }
+        },
+        {
+          "CheckTag": "(TagName=\"Check.AchievementUnlocked\")",
+          "TargetTag": "",
+          "Operator": "Equal",
+          "ExpectedValue": {
+            "ValueType": "String",
+            "StringValue": "First_Player_Health_Decreased"
+          }
+        }
+      ]
+    },
+    "ToastMessage": "\u6210\u5c31\u89e3\u9501\uff1a\u521d\u7aa5\u95e8\u5f84"
+  }
+]
