@@ -10,7 +10,7 @@
 
 namespace
 {
-	UMyUIStoreSubsystem* ResolveStoreSubsystem(const UUserWidget* Widget)
+	UMyUIStoreSubsystem* ResolveDialogStoreSubsystem(const UUserWidget* Widget)
 	{
 		if (!Widget)
 		{
@@ -29,7 +29,7 @@ namespace
 		return LocalPlayer ? ULocalPlayer::GetSubsystem<UMyUIStoreSubsystem>(LocalPlayer) : nullptr;
 	}
 
-	void SetWidgetViewModel(UUserWidget* Widget, UObject* InViewModel)
+	void SetDialogWidgetViewModel(UUserWidget* Widget, UObject* InViewModel)
 	{
 		if (!Widget)
 		{
@@ -96,7 +96,7 @@ UObject* UMyMVVMDialogBase::GetViewModelObject() const
 
 UMyUIStoreSubsystem* UMyMVVMDialogBase::GetUIStoreSubsystem() const
 {
-	return ResolveStoreSubsystem(this);
+	return ResolveDialogStoreSubsystem(this);
 }
 
 UObject* UMyMVVMDialogBase::CreateViewModelInstance()
@@ -131,11 +131,11 @@ void UMyMVVMDialogBase::HandlePostViewModelDetached()
 void UMyMVVMDialogBase::AttachViewModelObject(UObject* InViewModel)
 {
 	ViewModelObject = InViewModel;
-	SetWidgetViewModel(this, ViewModelObject);
+	SetDialogWidgetViewModel(this, ViewModelObject);
 }
 
 void UMyMVVMDialogBase::DetachViewModelObject()
 {
-	SetWidgetViewModel(this, nullptr);
+	SetDialogWidgetViewModel(this, nullptr);
 	ViewModelObject = nullptr;
 }

@@ -9,7 +9,7 @@
 
 namespace
 {
-	const TCHAR* LexToString(const EMyUILayer Layer)
+	const TCHAR* ScreenLayerToString(const EMyUILayer Layer)
 	{
 		switch (Layer)
 		{
@@ -41,7 +41,7 @@ void UMyScreenBase::SetPayload(const FMyUIPayload& InPayload)
 	CachedPayload = InPayload;
 	UE_LOG(LogTemp, Display, TEXT("[UIFramework] SetPayload Screen=%s Layer=%s ContextTag=%s StringValue=%s IntValue=%d"),
 		*GetNameSafe(this),
-		LexToString(PreferredLayer),
+		ScreenLayerToString(PreferredLayer),
 		*CachedPayload.ContextTag.ToString(),
 		*CachedPayload.StringValue,
 		CachedPayload.IntValue);
@@ -53,7 +53,7 @@ void UMyScreenBase::RequestClose()
 	UE_LOG(LogTemp, Display, TEXT("[UIFramework] RequestClose Screen=%s Tag=%s Layer=%s Activated=%s"),
 		*GetNameSafe(this),
 		*ScreenTag.ToString(),
-		LexToString(PreferredLayer),
+		ScreenLayerToString(PreferredLayer),
 		IsActivated() ? TEXT("true") : TEXT("false"));
 
 	ULocalPlayer* LocalPlayer = GetOwningLocalPlayer();
@@ -133,7 +133,7 @@ bool UMyScreenBase::NativeOnHandleBackAction()
 	UE_LOG(LogTemp, Display, TEXT("[UIFramework] BackIntent Screen=%s Tag=%s Layer=%s CanBeClosed=%s"),
 		*GetNameSafe(this),
 		*ScreenTag.ToString(),
-		LexToString(PreferredLayer),
+		ScreenLayerToString(PreferredLayer),
 		bCanBeClosed ? TEXT("true") : TEXT("false"));
 
 	if (bCanBeClosed)
@@ -157,7 +157,7 @@ void UMyScreenBase::NativeOnActivated()
 	UE_LOG(LogTemp, Display, TEXT("[UIFramework] Activated Screen=%s Tag=%s Layer=%s FocusTarget=%s"),
 		*GetNameSafe(this),
 		*ScreenTag.ToString(),
-		LexToString(PreferredLayer),
+		ScreenLayerToString(PreferredLayer),
 		*GetNameSafe(NativeGetDesiredFocusTarget()));
 	BP_OnScreenActivated();
 }
@@ -168,6 +168,6 @@ void UMyScreenBase::NativeOnDeactivated()
 	UE_LOG(LogTemp, Display, TEXT("[UIFramework] Deactivated Screen=%s Tag=%s Layer=%s"),
 		*GetNameSafe(this),
 		*ScreenTag.ToString(),
-		LexToString(PreferredLayer));
+		ScreenLayerToString(PreferredLayer));
 	BP_OnScreenDeactivated();
 }

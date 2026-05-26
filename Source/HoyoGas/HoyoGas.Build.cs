@@ -17,7 +17,8 @@ public class HoyoGas : ModuleRules
 			Path.Combine(ModuleDirectory, "UIFramework/Public"),
 			Path.Combine(ModuleDirectory, "UIViewModels/Public"),
 			Path.Combine(ModuleDirectory, "UIGenerated/UIFramework/Public"),
-			Path.Combine(ModuleDirectory, "UIGenerated/UIViewModels/Public")
+			Path.Combine(ModuleDirectory, "UIGenerated/UIViewModels/Public"),
+			Path.Combine(ModuleDirectory, "OrigamiBird/Public"),
 		});
 
 		PrivateIncludePaths.AddRange(new string[]
@@ -29,7 +30,8 @@ public class HoyoGas : ModuleRules
 			Path.Combine(ModuleDirectory, "UIFramework/Private"),
 			Path.Combine(ModuleDirectory, "UIViewModels/Private"),
 			Path.Combine(ModuleDirectory, "UIGenerated/UIFramework/Private"),
-			Path.Combine(ModuleDirectory, "UIGenerated/UIViewModels/Private")
+			Path.Combine(ModuleDirectory, "UIGenerated/UIViewModels/Private"),
+			Path.Combine(ModuleDirectory, "OrigamiBird/Private"),
 		});
 
 		PublicDependencyModuleNames.AddRange(new string[]

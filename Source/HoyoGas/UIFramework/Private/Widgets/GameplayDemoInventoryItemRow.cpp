@@ -9,7 +9,7 @@
 
 namespace
 {
-	void SetWidgetViewModel(UUserWidget* Widget, UObject* InViewModel)
+	void SetInventoryItemWidgetViewModel(UUserWidget* Widget, UObject* InViewModel)
 	{
 		if (!Widget)
 		{
@@ -49,7 +49,7 @@ void UGameplayDemoInventoryItemRow::NativeOnListItemObjectSet(UObject* ListItemO
 {
 	IUserObjectListEntry::NativeOnListItemObjectSet(ListItemObject);
 	ViewModel = Cast<UVM_InventoryItemEntry>(ListItemObject);
-	SetWidgetViewModel(this, ViewModel);
+	SetInventoryItemWidgetViewModel(this, ViewModel);
 }
 
 void UGameplayDemoInventoryItemRow::NativeOnItemSelectionChanged(bool bIsSelected)
@@ -66,5 +66,5 @@ void UGameplayDemoInventoryItemRow::NativeOnEntryReleased()
 {
 	IUserListEntry::NativeOnEntryReleased();
 	ViewModel = nullptr;
-	SetWidgetViewModel(this, nullptr);
+	SetInventoryItemWidgetViewModel(this, nullptr);
 }

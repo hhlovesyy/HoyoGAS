@@ -10,8 +10,7 @@
 
 namespace
 {
-	//匿名的命名空间：把函数包在 namespace { } 里，等于给这些函数加了一把锁：“这些函数只在当前这一个 .cpp 文件里可见，外面任何人、任何文件都调不到它们，也绝对不会和外面的同名函数冲突。” 这等价于 C 语言里的 static 函数，是极其优秀的防御性编程习惯。
-	UMyUIStoreSubsystem* ResolveStoreSubsystem(const UUserWidget* Widget)
+	UMyUIStoreSubsystem* ResolveScreenStoreSubsystem(const UUserWidget* Widget)
 	{
 		if (!Widget)
 		{
@@ -30,7 +29,7 @@ namespace
 		return LocalPlayer ? ULocalPlayer::GetSubsystem<UMyUIStoreSubsystem>(LocalPlayer) : nullptr;
 	}
 
-	void SetWidgetViewModel(UUserWidget* Widget, UObject* InViewModel)
+	void SetScreenWidgetViewModel(UUserWidget* Widget, UObject* InViewModel)
 	{
 		if (!Widget)
 		{
@@ -97,7 +96,7 @@ UObject* UMyMVVMScreenBase::GetViewModelObject() const
 
 UMyUIStoreSubsystem* UMyMVVMScreenBase::GetUIStoreSubsystem() const
 {
-	return ResolveStoreSubsystem(this);
+	return ResolveScreenStoreSubsystem(this);
 }
 
 UObject* UMyMVVMScreenBase::CreateViewModelInstance()
@@ -107,7 +106,6 @@ UObject* UMyMVVMScreenBase::CreateViewModelInstance()
 
 void UMyMVVMScreenBase::InitializeViewModel(UObject* ViewModel, UMyUIStoreSubsystem* StoreSubsystem)
 {
-	//强行告诉编译器：“我知道我传了这个变量，我就是故意不用的，你别给我报错了！”
 	(void)ViewModel;
 	(void)StoreSubsystem;
 }
@@ -133,11 +131,11 @@ void UMyMVVMScreenBase::HandlePostViewModelDetached()
 void UMyMVVMScreenBase::AttachViewModelObject(UObject* InViewModel)
 {
 	ViewModelObject = InViewModel;
-	SetWidgetViewModel(this, ViewModelObject);
+	SetScreenWidgetViewModel(this, ViewModelObject);
 }
 
 void UMyMVVMScreenBase::DetachViewModelObject()
 {
-	SetWidgetViewModel(this, nullptr);
+	SetScreenWidgetViewModel(this, nullptr);
 	ViewModelObject = nullptr;
 }
