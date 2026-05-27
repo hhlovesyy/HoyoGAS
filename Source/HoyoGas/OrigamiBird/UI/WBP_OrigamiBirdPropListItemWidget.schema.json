@@ -1,0 +1,154 @@
+{
+  "version": "1.0",
+  "widgetBlueprintName": "WBP_OrigamiBirdPropListItemWidget",
+  "parentClass": "OrigamiBirdPropListItemWidget",
+  "defaults": {
+    "fontObject": "/Game/Genshin/Fonts/Genshin_Font.Genshin_Font",
+    "richTextStyleSet": "auto"
+  },
+  "mvvm": {
+    "viewModels": [
+      {
+        "name": "EntryViewModel",
+        "class": "VM_OrigamiBirdPropEntry",
+        "creationType": "Manual"
+      }
+    ]
+  },
+  "root": {
+    "type": "Border",
+    "name": "RowBorder",
+    "props": {
+      "brushColor": [0.055, 0.065, 0.075, 0.92],
+      "padding": [10, 8, 10, 8]
+    },
+    "codegen": {
+      "bindWidget": true
+    },
+    "children": [
+      {
+        "type": "HorizontalBox",
+        "name": "RootBox",
+        "children": [
+          {
+            "type": "SizeBox",
+            "name": "IconSizeBox",
+            "slot": {
+              "padding": [0, 0, 10, 0],
+              "verticalAlignment": "center"
+            },
+            "props": {
+              "widthOverride": 52,
+              "heightOverride": 52
+            },
+            "children": [
+              {
+                "type": "Image",
+                "name": "IconImage",
+                "codegen": {
+                  "bindWidget": true
+                }
+              }
+            ]
+          },
+          {
+            "type": "VerticalBox",
+            "name": "TextStack",
+            "slot": {
+              "size": "fill",
+              "verticalAlignment": "center"
+            },
+            "children": [
+              {
+                "type": "HorizontalBox",
+                "name": "NameLine",
+                "children": [
+                  {
+                    "type": "TextBlock",
+                    "name": "DisplayNameText",
+                    "slot": {
+                      "size": "fill"
+                    },
+                    "props": {
+                      "text": "Prop",
+                      "fontSize": 16,
+                      "color": [0.96, 0.93, 0.84, 1]
+                    },
+                    "codegen": {
+                      "bindWidget": true,
+                      "mvvm": {
+                        "destination": "Text",
+                        "sourceViewModel": "EntryViewModel",
+                        "sourceField": "DisplayNameText"
+                      }
+                    }
+                  },
+                  {
+                    "type": "TextBlock",
+                    "name": "CountText",
+                    "slot": {
+                      "padding": [8, 0, 0, 0]
+                    },
+                    "props": {
+                      "text": "x0",
+                      "fontSize": 16,
+                      "color": [0.96, 0.80, 0.42, 1]
+                    },
+                    "codegen": {
+                      "bindWidget": true,
+                      "mvvm": {
+                        "destination": "Text",
+                        "sourceViewModel": "EntryViewModel",
+                        "sourceField": "CountText"
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "type": "TextBlock",
+                "name": "DescriptionText",
+                "slot": {
+                  "padding": [0, 4, 0, 0]
+                },
+                "props": {
+                  "text": "Description",
+                  "fontSize": 12,
+                  "color": [0.72, 0.76, 0.78, 1]
+                },
+                "codegen": {
+                  "bindWidget": true,
+                  "mvvm": {
+                    "destination": "Text",
+                    "sourceViewModel": "EntryViewModel",
+                    "sourceField": "DescriptionText"
+                  }
+                }
+              },
+              {
+                "type": "TextBlock",
+                "name": "StackRuleText",
+                "slot": {
+                  "padding": [0, 3, 0, 0]
+                },
+                "props": {
+                  "text": "Stack",
+                  "fontSize": 11,
+                  "color": [0.52, 0.64, 0.78, 1]
+                },
+                "codegen": {
+                  "bindWidget": true,
+                  "mvvm": {
+                    "destination": "Text",
+                    "sourceViewModel": "EntryViewModel",
+                    "sourceField": "StackRuleText"
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

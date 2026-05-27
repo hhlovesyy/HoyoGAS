@@ -193,6 +193,11 @@ void AGameplayDemoPlayerController::BindEnhancedInputActions()
 	{
 		EnhancedInputComponent->BindAction(OpenCharacterDetailsAction,ETriggerEvent::Started,  this, &AGameplayDemoPlayerController::OpenCharacterDetailPanel);
 	}
+	
+	if (TestGameplayAction)
+	{
+		EnhancedInputComponent->BindAction(TestGameplayAction, ETriggerEvent::Started, this, &AGameplayDemoPlayerController::OpenTestSomething);
+	}
 }
 
 void AGameplayDemoPlayerController::BindGameplayDebugInput()
@@ -696,6 +701,16 @@ void AGameplayDemoPlayerController::OpenCharacterDetailPanel()
 	if (UMyPlayerUISubsystem* PlayerUISubsystem = ULocalPlayer::GetSubsystem<UMyPlayerUISubsystem>(LocalPlayer))
 	{
 		PlayerUISubsystem->OpenScreen(TEXT("CharacterPanel"), FMyUIPayload());
+	}
+}
+
+void AGameplayDemoPlayerController::OpenTestSomething()
+{
+	ULocalPlayer* LocalPlayer = GetLocalPlayer();
+	if (!LocalPlayer) return;
+	if (UMyPlayerUISubsystem* PlayerUISubsystem = ULocalPlayer::GetSubsystem<UMyPlayerUISubsystem>(LocalPlayer))
+	{
+		PlayerUISubsystem->OpenScreen(TEXT("OrigamiBirdMainPanel"), FMyUIPayload());
 	}
 }
 

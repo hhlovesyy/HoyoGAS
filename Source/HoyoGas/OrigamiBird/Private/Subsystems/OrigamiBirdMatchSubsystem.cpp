@@ -149,6 +149,96 @@ void UOrigamiBirdMatchSubsystem::GetAllLevelIds(TArray<FName>& OutLevelIds) cons
 	OutLevelIds = LevelTable->GetRowNames();
 }
 
+bool UOrigamiBirdMatchSubsystem::FindPropDefinition(FName PropId, FOrigamiBirdPropDefinitionRow& OutDefinition) const
+{
+	if (PropId.IsNone())
+	{
+		return false;
+	}
+
+	const UDataTable* PropTable = LoadPropDefinitionTable();
+	if (!PropTable)
+	{
+		UE_LOG(LogOrigamiBirdMatchSubsystem, Warning, TEXT("FindPropDefinition failed because PropDefinitionTable is not configured."));
+		return false;
+	}
+
+	const FString ContextString = TEXT("OrigamiBirdMatchSubsystem.FindPropDefinition");
+	if (const FOrigamiBirdPropDefinitionRow* Row = PropTable->FindRow<FOrigamiBirdPropDefinitionRow>(PropId, ContextString))
+	{
+		OutDefinition = *Row;
+		return true;
+	}
+
+	return false;
+}
+
+void UOrigamiBirdMatchSubsystem::GetAllPropIds(TArray<FName>& OutPropIds) const
+{
+	OutPropIds.Reset();
+
+	const UDataTable* PropTable = LoadPropDefinitionTable();
+	if (!PropTable)
+	{
+		return;
+	}
+
+	OutPropIds = PropTable->GetRowNames();
+}
+
+void UOrigamiBirdMatchSubsystem::GetAllPropDefinitions(TArray<FOrigamiBirdPropDefinitionRow>& OutDefinitions) const
+{
+	OutDefinitions.Reset();
+
+	const UDataTable* PropTable = LoadPropDefinitionTable();
+	if (!PropTable)
+	{
+		return;
+	}
+
+	const FString ContextString = TEXT("OrigamiBirdMatchSubsystem.GetAllPropDefinitions");
+	TArray<FOrigamiBirdPropDefinitionRow*> Rows;
+	PropTable->GetAllRows<FOrigamiBirdPropDefinitionRow>(ContextString, Rows);
+
+	OutDefinitions.Reserve(Rows.Num());
+	for (const FOrigamiBirdPropDefinitionRow* Row : Rows)
+	{
+		if (Row)
+		{
+			OutDefinitions.Add(*Row);
+		}
+	}
+}
+
+bool UOrigamiBirdMatchSubsystem::GrantPropToActiveMatch(FName PropId, int32 Count)
+{
+	if (!ActiveMatch)
+	{
+		UE_LOG(LogOrigamiBirdMatchSubsystem, Warning, TEXT("GrantPropToActiveMatch failed because there is no active match."));
+		return false;
+	}
+
+	FOrigamiBirdPropDefinitionRow PropDefinition;
+	if (!FindPropDefinition(PropId, PropDefinition))
+	{
+		UE_LOG(LogOrigamiBirdMatchSubsystem, Warning, TEXT("GrantPropToActiveMatch failed because prop '%s' was not found."), *PropId.ToString());
+		return false;
+	}
+
+	return ActiveMatch->GrantProp(PropId, Count, PropDefinition.bStackable, PropDefinition.MaxStackCount);
+}
+
+bool UOrigamiBirdMatchSubsystem::ConsumePropFromActiveMatch(FName PropId, int32 Count)
+{
+	if (!ActiveMatch)
+	{
+		UE_LOG(LogOrigamiBirdMatchSubsystem, Warning, TEXT("ConsumePropFromActiveMatch failed because there is no active match."));
+		return false;
+	}
+
+	return ActiveMatch->ConsumeProp(PropId, Count);
+}
+
 UDataTable* UOrigamiBirdMatchSubsystem::LoadTileDefinitionTable() const
 {
 	const UOrigamiBirdSettings* Settings = GetDefault<UOrigamiBirdSettings>();
@@ -159,4 +249,10 @@ UDataTable* UOrigamiBirdMatchSubsystem::LoadLevelDefinitionTable() const
 {
 	const UOrigamiBirdSettings* Settings = GetDefault<UOrigamiBirdSettings>();
 	return Settings ? Settings->LevelDefinitionTable.LoadSynchronous() : nullptr;
+}
+
+UDataTable* UOrigamiBirdMatchSubsystem::LoadPropDefinitionTable() const
+{
+	const UOrigamiBirdSettings* Settings = GetDefault<UOrigamiBirdSettings>();
+	return Settings ? Settings->PropDefinitionTable.LoadSynchronous() : nullptr;
 }

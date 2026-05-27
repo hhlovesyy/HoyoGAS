@@ -9,6 +9,7 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOrigamiBirdBoardChangedEvent, const
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOrigamiBirdTileSelectedEvent, FIntPoint, BoardPosition);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOrigamiBirdScoreChangedEvent, int32, NewScore);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOrigamiBirdMovesChangedEvent, int32, NewMovesRemaining);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOrigamiBirdPropStacksChangedEvent, const TArray<FOrigamiBirdPropStack>&, PropStacks);
 
 //需要一个 UObject 来持有棋盘。
 UCLASS(BlueprintType)
@@ -31,6 +32,9 @@ public:
 	
 	UFUNCTION(BlueprintCallable, Category = "OrigamiBird")
 	bool TrySwapTiles(FIntPoint From, FIntPoint To);
+	
+	UFUNCTION(BlueprintCallable, Category = "OrigamiBird")
+	bool TrySwapTilesWithResult(FIntPoint From, FIntPoint To, FOrigamiBirdMoveResult& OutResult);
 
 	UFUNCTION(BlueprintCallable, Category = "OrigamiBird")
 	bool SelectTile(FIntPoint BoardPosition);
@@ -43,6 +47,21 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "OrigamiBird")
 	bool FindTileDefinition(EOrigamiBirdTileType TileType, FOrigamiBirdTileDefinitionRow& OutDefinition) const;
+
+	UFUNCTION(BlueprintCallable, Category = "OrigamiBird|Props")
+	bool GrantProp(FName PropId, int32 Count, bool bStackable, int32 MaxStackCount);
+
+	UFUNCTION(BlueprintCallable, Category = "OrigamiBird|Props")
+	bool ConsumeProp(FName PropId, int32 Count = 1);
+
+	UFUNCTION(BlueprintCallable, Category = "OrigamiBird|Props")
+	int32 GetPropCount(FName PropId) const;
+
+	UFUNCTION(BlueprintCallable, Category = "OrigamiBird|Props")
+	void GetPropStacks(TArray<FOrigamiBirdPropStack>& OutStacks) const;
+
+	UFUNCTION(BlueprintCallable, Category = "OrigamiBird|Props")
+	void ClearProps();
 	
 	//相关的事件
 	UPROPERTY(BlueprintAssignable, Category = "OrigamiBird")
@@ -56,11 +75,15 @@ public:
 
 	UPROPERTY(BlueprintAssignable, Category = "OrigamiBird")
 	FOrigamiBirdMovesChangedEvent OnMovesChanged;
+
+	UPROPERTY(BlueprintAssignable, Category = "OrigamiBird")
+	FOrigamiBirdPropStacksChangedEvent OnPropStacksChanged;
 	
 private:
 	FOrigamiBirdMatchStartParams StartParams;
 	FRandomStream RandomStream;
 	TArray<FOrigamiBirdTile> BoardTiles;
+	TArray<FOrigamiBirdPropStack> PropStacks;
 	TMap<EOrigamiBirdTileType, FOrigamiBirdTileDefinitionRow> TileDefinitionsByType;
 
 	int32 NextTileId = 1;
@@ -88,8 +111,7 @@ private:
 	
 	void RemoveTiles(const TArray<FIntPoint>& Positions);
 	
-	void CollapseAndRefill(); //下落并补充
-	bool ResolveBoardAfterValidSwap(); //有可能会连续消除，这个是连续消除的入口
+	void CollapseAndRefill(TArray<FOrigamiBirdResolveStep>* OutSteps = nullptr); //下落并补充
 
 	//下面的是分数相关的
 	int32 Score = 0;
@@ -100,5 +122,15 @@ private:
 
 	void CheckGameEnd();
 	void BroadcastBoardChanged();
+	void BroadcastPropStacksChanged();
 	void ClearSelection();
+	int32 FindPropStackIndex(FName PropId) const;
+	
+	//记录step的辅助函数
+	FOrigamiBirdTile MakeTileSnapshot(FIntPoint Position) const;
+	TArray<FOrigamiBirdTile> MakeTileSnapshots(const TArray<FIntPoint>& Positions) const;
+	FOrigamiBirdResolveStep MakeSwapStep(FIntPoint From, FIntPoint To) const;
+	FOrigamiBirdResolveStep MakeMatchStep(const TArray<FIntPoint>& MatchPositions, int32 ComboIndex) const;
+	FOrigamiBirdResolveStep MakeRemoveStep(const TArray<FIntPoint>& MatchPositions, int32 ComboIndex) const;
+	FOrigamiBirdResolveStep MakeScoreStep(int32 ScoreDelta, int32 ComboIndex, int32 InRemovedTileCount) const;
 };

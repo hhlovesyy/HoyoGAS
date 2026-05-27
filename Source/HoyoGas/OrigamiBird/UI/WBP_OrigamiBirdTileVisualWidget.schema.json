@@ -1,0 +1,95 @@
+{
+  "version": "1.0",
+  "widgetBlueprintName": "WBP_OrigamiBirdTileVisualWidget",
+  "parentClass": "OrigamiBirdTileVisualWidget",
+  "defaults": {
+    "fontObject": "/Game/Genshin/Fonts/Genshin_Font.Genshin_Font",
+    "richTextStyleSet": "auto"
+  },
+  "root": {
+    "type": "SizeBox",
+    "name": "RootSizeBox",
+    "props": {
+      "widthOverride": 96,
+      "heightOverride": 96
+    },
+    "codegen": {
+      "bindWidget": true
+    },
+    "children": [
+      {
+        "type": "Button",
+        "name": "HitButton",
+        "codegen": {
+          "bindWidget": true
+        },
+        "children": [
+          {
+            "type": "Overlay",
+            "name": "TileRootOverlay",
+            "children": [
+              {
+                "type": "Border",
+                "name": "BackgroundBorder",
+                "slot": {
+                  "horizontalAlignment": "fill",
+                  "verticalAlignment": "fill"
+                },
+                "props": {
+                  "brushColor": [0.08, 0.085, 0.095, 1],
+                  "padding": [8, 8, 8, 8]
+                },
+                "codegen": {
+                  "bindWidget": true
+                }
+              },
+              {
+                "type": "Border",
+                "name": "TileBaseGlow",
+                "slot": {
+                  "horizontalAlignment": "fill",
+                  "verticalAlignment": "fill",
+                  "padding": [5, 5, 5, 5]
+                },
+                "props": {
+                  "brushColor": [0.95, 0.72, 0.26, 0.16],
+                  "padding": [0, 0, 0, 0]
+                }
+              },
+              {
+                "type": "Image",
+                "name": "IconImage",
+                "slot": {
+                  "horizontalAlignment": "fill",
+                  "verticalAlignment": "fill",
+                  "padding": [10, 10, 10, 10]
+                },
+                "props": {
+                  "color": [1, 1, 1, 1]
+                },
+                "codegen": {
+                  "bindWidget": true
+                }
+              },
+              {
+                "type": "Border",
+                "name": "SelectionBorder",
+                "slot": {
+                  "horizontalAlignment": "fill",
+                  "verticalAlignment": "fill"
+                },
+                "props": {
+                  "brushColor": [0, 0, 0, 0],
+                  "padding": [0, 0, 0, 0]
+                },
+                "codegen": {
+                  "bindWidget": true
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

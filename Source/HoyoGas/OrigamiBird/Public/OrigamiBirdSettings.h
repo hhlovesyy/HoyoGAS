@@ -6,8 +6,8 @@
 
 class UDataTable;
 
-// 折纸小鸟对对碰的项目级配置。
-// 这里集中指定方块表、关卡表，后续活动入口、Debug UI、关卡系统都从这里找默认策划表。
+// Origami Bird Match project settings.
+// Centralizes data tables used by the activity, level system, and debug entry points.
 UCLASS(Config = Game, DefaultConfig, meta = (DisplayName = "Origami Bird Match"))
 class HOYOGAS_API UOrigamiBirdSettings : public UDeveloperSettings
 {
@@ -16,15 +16,19 @@ class HOYOGAS_API UOrigamiBirdSettings : public UDeveloperSettings
 public:
 	virtual FName GetCategoryName() const override;
 
-	// 方块定义表：每行是一个 TileDefinition，比如红色水果、蓝色水果、冰块、石头。
+	// Tile definition table. Each row defines one board tile type.
 	UPROPERTY(Config, EditAnywhere, BlueprintReadOnly, Category = "Data")
 	TSoftObjectPtr<UDataTable> TileDefinitionTable;
 
-	// 关卡定义表：每行是一个 LevelDefinition，比如 Level_001、Level_002。
+	// Level definition table. Each row defines one playable level.
 	UPROPERTY(Config, EditAnywhere, BlueprintReadOnly, Category = "Data")
 	TSoftObjectPtr<UDataTable> LevelDefinitionTable;
 
-	// 开发测试默认关卡。Debug UI 或快捷键启动玩法时可以先读这行。
+	// Prop definition table. Each row defines one usable prop.
+	UPROPERTY(Config, EditAnywhere, BlueprintReadOnly, Category = "Data")
+	TSoftObjectPtr<UDataTable> PropDefinitionTable;
+
+	// Development default level used by quick launch or debug UI.
 	UPROPERTY(Config, EditAnywhere, BlueprintReadOnly, Category = "Development")
 	FName DefaultDevelopmentLevelId = TEXT("Level_001");
 };

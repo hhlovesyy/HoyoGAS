@@ -1,0 +1,54 @@
+[
+  {
+    "Name": "Prop_RemoveSingleTile",
+    "DisplayName": "Remove Tile",
+    "Description": "Select one tile, remove it, then refill the board.",
+    "Icon": "",
+    "PropType": "RemoveSingleTile",
+    "TargetType": "SingleTile",
+    "InitialCount": 3,
+    "bStackable": true,
+    "MaxStackCount": 99,
+    "bResolveAfterUse": true,
+    "ReplacementTileType": "None"
+  },
+  {
+    "Name": "Prop_ReplaceRedFruit",
+    "DisplayName": "Replace With Red",
+    "Description": "Select one tile and replace it with a red fruit.",
+    "Icon": "",
+    "PropType": "ReplaceTileType",
+    "TargetType": "SingleTile",
+    "InitialCount": 3,
+    "bStackable": true,
+    "MaxStackCount": 99,
+    "bResolveAfterUse": true,
+    "ReplacementTileType": "RedFruit"
+  },
+  {
+    "Name": "Prop_SwapColumns",
+    "DisplayName": "Swap Columns",
+    "Description": "Select two columns and swap their tiles.",
+    "Icon": "",
+    "PropType": "SwapColumns",
+    "TargetType": "TwoColumns",
+    "InitialCount": 1,
+    "bStackable": false,
+    "MaxStackCount": 1,
+    "bResolveAfterUse": true,
+    "ReplacementTileType": "None"
+  },
+  {
+    "Name": "Prop_CopyColumn",
+    "DisplayName": "Copy Column",
+    "Description": "Select a source column and a target column, then copy source tiles to target.",
+    "Icon": "",
+    "PropType": "CopyColumn",
+    "TargetType": "TwoColumns",
+    "InitialCount": 1,
+    "bStackable": false,
+    "MaxStackCount": 1,
+    "bResolveAfterUse": true,
+    "ReplacementTileType": "None"
+  }
+]

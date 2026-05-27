@@ -67,6 +67,7 @@
 #include "UObject/TopLevelAssetPath.h"
 #include "UObject/UnrealType.h"
 #include "UObject/UObjectIterator.h"
+#include "UObject/UObjectIterator.h"
 #include "WidgetBlueprint.h"
 #include "WidgetBlueprintFactory.h"
 
@@ -703,8 +704,38 @@ namespace JsonWidgetBlueprintImporter
 
 		if (WidgetClass == nullptr)
 		{
-			AddWarning(Result, FString::Printf(TEXT("Unsupported widget type '%s'; node will be skipped."), *TypeName));
-			return nullptr;
+			const FString TrimmedTypeName = TypeName.TrimStartAndEnd();
+			const FString NativeClassName = TrimmedTypeName.StartsWith(TEXT("U")) ? TrimmedTypeName : FString(TEXT("U")) + TrimmedTypeName;
+
+			for (TObjectIterator<UClass> ClassIt; ClassIt; ++ClassIt)
+			{
+				UClass* CandidateClass = *ClassIt;
+				if (!CandidateClass || !CandidateClass->IsChildOf(UWidget::StaticClass()))
+				{
+					continue;
+				}
+
+				if (CandidateClass->GetName().Equals(TrimmedTypeName, ESearchCase::IgnoreCase)
+					|| CandidateClass->GetName().Equals(NativeClassName, ESearchCase::IgnoreCase))
+				{
+					WidgetClass = CandidateClass;
+					break;
+				}
+			}
+
+			if (WidgetClass == nullptr)
+			{
+				if (UClass* LoadedClass = LoadClass<UWidget>(nullptr, *TrimmedTypeName))
+				{
+					WidgetClass = LoadedClass;
+				}
+			}
+
+			if (WidgetClass == nullptr)
+			{
+				AddWarning(Result, FString::Printf(TEXT("Unsupported widget type '%s'; node will be skipped."), *TypeName));
+				return nullptr;
+			}
 		}
 
 		const FName ResolvedName = ResolveWidgetObjectName(WidgetTree, WidgetClass, RequestedName, TypeName, Result);
@@ -1949,6 +1980,24 @@ namespace JsonWidgetBlueprintImporter
 						{
 							OverlaySlot->SetHorizontalAlignment(ToHorizontalAlignment(Alignment.X));
 							OverlaySlot->SetVerticalAlignment(ToVerticalAlignment(Alignment.Y));
+							bHandled = true;
+						}
+					}
+					else if (Key.Equals(TEXT("horizontalAlignment"), ESearchCase::IgnoreCase))
+					{
+						EHorizontalAlignment HorizontalAlignment = HAlign_Center;
+						if (TryReadHorizontalAlignmentKeyword(Value, HorizontalAlignment))
+						{
+							OverlaySlot->SetHorizontalAlignment(HorizontalAlignment);
+							bHandled = true;
+						}
+					}
+					else if (Key.Equals(TEXT("verticalAlignment"), ESearchCase::IgnoreCase))
+					{
+						EVerticalAlignment VerticalAlignment = VAlign_Center;
+						if (TryReadVerticalAlignmentKeyword(Value, VerticalAlignment))
+						{
+							OverlaySlot->SetVerticalAlignment(VerticalAlignment);
 							bHandled = true;
 						}
 					}

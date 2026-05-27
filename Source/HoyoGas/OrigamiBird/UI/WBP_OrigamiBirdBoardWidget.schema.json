@@ -1,0 +1,66 @@
+{
+  "version": "1.0",
+  "widgetBlueprintName": "WBP_OrigamiBirdBoardWidget",
+  "parentClass": "OrigamiBirdBoardWidget",
+  "defaults": {
+    "fontObject": "/Game/Genshin/Fonts/Genshin_Font.Genshin_Font",
+    "richTextStyleSet": "auto"
+  },
+  "root": {
+    "type": "Overlay",
+    "name": "BoardRoot",
+    "children": [
+      {
+        "type": "Border",
+        "name": "BoardBackPlate",
+        "slot": {
+          "horizontalAlignment": "fill",
+          "verticalAlignment": "fill",
+          "padding": [8, 8, 8, 8]
+        },
+        "props": {
+          "brushColor": [0.055, 0.06, 0.07, 0.92],
+          "padding": [16, 16, 16, 16]
+        }
+      },
+      {
+        "type": "Border",
+        "name": "BoardGlowPlate",
+        "slot": {
+          "horizontalAlignment": "fill",
+          "verticalAlignment": "fill",
+          "padding": [2, 2, 2, 2]
+        },
+        "props": {
+          "brushColor": [0.28, 0.22, 0.12, 0.18],
+          "padding": [0, 0, 0, 0]
+        }
+      },
+      {
+        "type": "UniformGridPanel",
+        "name": "BoardGrid",
+        "slot": {
+          "horizontalAlignment": "center",
+          "verticalAlignment": "center",
+          "padding": [18, 18, 18, 18]
+        },
+        "props": {
+          "slotPadding": [4, 4, 4, 4],
+          "minDesiredSlotWidth": 96,
+          "minDesiredSlotHeight": 96
+        },
+        "codegen": {
+          "bindWidget": true
+        }
+      },
+      {
+        "type": "Overlay",
+        "name": "BoardEffectLayer",
+        "slot": {
+          "horizontalAlignment": "fill",
+          "verticalAlignment": "fill"
+        }
+      }
+    ]
+  }
+}

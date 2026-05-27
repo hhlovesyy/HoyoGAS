@@ -58,6 +58,7 @@ private:
 	void ToggleInventoryScreen();
 	void OpenPauseMenu();
 	void OpenCharacterDetailPanel();
+	void OpenTestSomething();
 	void TestPyro(const FInputActionValue& Value);
 	void TestHydro(const FInputActionValue& Value);
 	void TestCryo(const FInputActionValue& Value);
@@ -100,6 +101,9 @@ private:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input|Actions", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UInputAction> OpenCharacterDetailsAction; 
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input|Actions", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UInputAction> TestGameplayAction;
 	
 	uint32 TestPyroBindingHandle = 0;
 	uint32 TestHydroBindingHandle = 0;
