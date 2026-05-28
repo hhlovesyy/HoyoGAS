@@ -3,7 +3,10 @@
 #include "CoreMinimal.h"
 #include "Engine/DataTable.h"
 #include "Engine/Texture2D.h"
+#include "Templates/SubclassOf.h"
 #include "OrigamiBirdMatchTypes.generated.h"
+
+class UOrigamiBirdPropEffect;
 
 //1.三消游戏支持的棋盘内容类型
 UENUM(BlueprintType)
@@ -94,6 +97,22 @@ enum class EOrigamiBirdPropTargetType : uint8
 	TwoColumns
 };
 
+// 道具策略参数：一条 Key/Value 配置。
+// 这样同一个 EffectClass 可以通过不同参数复用，例如 ReplaceTileEffect 配 TileType=RedFruit 或 TileType=BlueFruit。
+USTRUCT(BlueprintType)
+struct HOYOGAS_API FOrigamiBirdPropEffectParam
+{
+	GENERATED_BODY()
+
+	// 参数名。建议使用稳定英文名，例如 TileType、ResolveAfterUse、Count。
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "OrigamiBird")
+	FName Key = NAME_None;
+
+	// 参数值。统一用字符串保存，再由策略类按 bool/int/float/name/enum 读取。
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "OrigamiBird")
+	FString Value;
+};
+
 // 道具策划表：每一行定义一种可使用道具。
 // RowName 就是道具 ID，例如 Prop_RemoveSingle、Prop_ReplaceRed、Prop_SwapColumns。
 USTRUCT(BlueprintType)
@@ -120,6 +139,14 @@ struct HOYOGAS_API FOrigamiBirdPropDefinitionRow : public FTableRowBase
 	// 使用这个道具时，UI 需要玩家选择的目标类型。
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "OrigamiBird")
 	EOrigamiBirdPropTargetType TargetType = EOrigamiBirdPropTargetType::None;
+
+	// 道具效果策略类。正式扩展时优先通过这个类执行效果，而不是把所有道具写进一个 switch。
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "OrigamiBird")
+	TSubclassOf<UOrigamiBirdPropEffect> EffectClass;
+
+	// 道具效果参数。由 EffectClass 自己解释，避免每个小变体都新建一个道具类。
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "OrigamiBird")
+	TArray<FOrigamiBirdPropEffectParam> EffectParams;
 
 	// 开发期/关卡默认给予数量。后面做活动存档时，运行时数量会来自存档或关卡奖励。
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "OrigamiBird", meta = (ClampMin = "0"))
@@ -155,6 +182,30 @@ struct HOYOGAS_API FOrigamiBirdPropStack
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "OrigamiBird", meta = (ClampMin = "0"))
 	int32 Count = 0;
+};
+
+// 一次使用道具的请求。
+// UI/VM 负责根据 TargetType 收集目标，然后把目标放进这个结构传给玩法逻辑。
+USTRUCT(BlueprintType)
+struct HOYOGAS_API FOrigamiBirdPropUseRequest
+{
+	GENERATED_BODY()
+
+	// 要使用的道具 ID，对应道具 DataTable 的 RowName。
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "OrigamiBird")
+	FName PropId = NAME_None;
+
+	// 格子目标。SingleTile 类道具通常只填 1 个；范围/多选类道具可以填多个。
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "OrigamiBird")
+	TArray<FIntPoint> TargetPositions;
+
+	// 列目标。SingleColumn 填 1 个，TwoColumns 填 2 个。
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "OrigamiBird")
+	TArray<int32> TargetColumns;
+
+	// 行目标。后面如果做清除一行、复制一行，可以直接复用这个字段。
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "OrigamiBird")
+	TArray<int32> TargetRows;
 };
 
 //2.游戏进行的状态
@@ -445,6 +496,40 @@ struct HOYOGAS_API FOrigamiBirdMoveResult
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "OrigamiBird")
 	int32 MaxCombo = 0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "OrigamiBird")
+	int32 RemovedTileCount = 0;
+};
+
+// 一次道具使用的完整结果。
+// 结构和 MoveResult 相似：玩法逻辑先瞬间算完，UI 再按 ResolveSteps 播放表现。
+USTRUCT(BlueprintType)
+struct HOYOGAS_API FOrigamiBirdPropUseResult
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "OrigamiBird")
+	bool bAccepted = false;
+
+	// 失败原因 ID。比如 PropNotFound、NotEnoughTarget、InvalidColumn。
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "OrigamiBird")
+	FName FailureReasonId = NAME_None;
+
+	// 使用的道具 ID，方便 UI/日志/事件系统知道是哪一个道具触发。
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "OrigamiBird")
+	FName PropId = NAME_None;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "OrigamiBird")
+	FOrigamiBirdBoardSnapshot InitialSnapshot;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "OrigamiBird")
+	FOrigamiBirdBoardSnapshot FinalSnapshot;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "OrigamiBird")
+	TArray<FOrigamiBirdResolveStep> ResolveSteps;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "OrigamiBird")
+	int32 TotalScoreDelta = 0;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "OrigamiBird")
 	int32 RemovedTileCount = 0;

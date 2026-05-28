@@ -30,6 +30,9 @@ public:
 	void PlayMoveResult(const FOrigamiBirdMoveResult& MoveResult);
 
 	UFUNCTION(BlueprintCallable, Category = "OrigamiBird")
+	void PlayPropUseResult(const FOrigamiBirdPropUseResult& PropUseResult);
+
+	UFUNCTION(BlueprintCallable, Category = "OrigamiBird")
 	void ClearBoard();
 
 	UFUNCTION(BlueprintCallable, Category = "OrigamiBird")

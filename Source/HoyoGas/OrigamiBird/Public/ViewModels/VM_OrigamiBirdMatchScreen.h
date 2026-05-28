@@ -47,6 +47,12 @@ public:
 	const TArray<TObjectPtr<UVM_OrigamiBirdPropEntry>>& GetPropEntries() const;
 	void SetPropEntries(const TArray<TObjectPtr<UVM_OrigamiBirdPropEntry>>& InEntries);
 
+	void SelectPropEntry(UVM_OrigamiBirdPropEntry* Entry);
+	void ClearSelectedProp();
+	bool HasSelectedProp() const;
+	bool TryUseSelectedPropOnTile(FIntPoint BoardPosition, FOrigamiBirdPropUseResult& OutResult);
+	bool TryUseSelectedPropWithoutTarget(FOrigamiBirdPropUseResult& OutResult);
+
 private:
 	UFUNCTION()
 	void HandleBoardChanged(const FOrigamiBirdBoardSnapshot& Snapshot);
@@ -80,6 +86,9 @@ private:
 	FOrigamiBirdBoardSnapshot CurrentSnapshot;
 	FOrigamiBirdMoveResult LastMoveResult;
 
+	FName SelectedPropId = NAME_None;
+	EOrigamiBirdPropTargetType SelectedPropTargetType = EOrigamiBirdPropTargetType::None;
+	TArray<int32> PendingPropTargetColumns;
 	FIntPoint SelectedBoardPosition = FIntPoint(INDEX_NONE, INDEX_NONE);
 	bool bHasSelectedPosition = false;
 };

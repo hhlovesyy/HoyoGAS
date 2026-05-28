@@ -42,6 +42,7 @@ void UOrigamiBirdPropListItemWidget::NativeOnInitialized()
 	Super::NativeOnInitialized();
 
 	EnsureDefaultVisualTree();
+	bCachedIsSelected = IsListItemSelected();
 	RefreshVisuals();
 }
 
@@ -55,17 +56,14 @@ void UOrigamiBirdPropListItemWidget::NativeOnItemSelectionChanged(bool bIsSelect
 {
 	IUserListEntry::NativeOnItemSelectionChanged(bIsSelected);
 
-	if (RowBorder)
-	{
-		RowBorder->SetBrushColor(bIsSelected
-			? FLinearColor(0.18f, 0.28f, 0.42f, 0.96f)
-			: FLinearColor(0.055f, 0.065f, 0.075f, 0.92f));
-	}
+	bCachedIsSelected = bIsSelected;
+	RefreshSelectionVisual();
 }
 
 void UOrigamiBirdPropListItemWidget::NativeOnEntryReleased()
 {
 	IUserListEntry::NativeOnEntryReleased();
+	bCachedIsSelected = false;
 	BindEntryViewModel(nullptr);
 }
 
@@ -129,6 +127,7 @@ void UOrigamiBirdPropListItemWidget::EnsureDefaultVisualTree()
 void UOrigamiBirdPropListItemWidget::BindEntryViewModel(UVM_OrigamiBirdPropEntry* InEntryViewModel)
 {
 	CachedPropEntryViewModel = InEntryViewModel;
+	bCachedIsSelected = IsListItemSelected();
 	SetPropEntryWidgetViewModel(this, CachedPropEntryViewModel);
 	RefreshVisuals();
 }
@@ -163,4 +162,18 @@ void UOrigamiBirdPropListItemWidget::RefreshVisuals()
 			IconImage->SetColorAndOpacity(FLinearColor(0.28f, 0.34f, 0.40f, 1.0f));
 		}
 	}
+
+	RefreshSelectionVisual();
+}
+
+void UOrigamiBirdPropListItemWidget::RefreshSelectionVisual()
+{
+	if (!RowBorder)
+	{
+		return;
+	}
+
+	RowBorder->SetBrushColor(bCachedIsSelected
+		? FLinearColor(0.18f, 0.28f, 0.42f, 0.96f)
+		: FLinearColor(0.055f, 0.065f, 0.075f, 0.92f));
 }

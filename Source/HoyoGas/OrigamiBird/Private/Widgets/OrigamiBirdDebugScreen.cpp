@@ -2,9 +2,11 @@
 
 #include "Components/Button.h"
 #include "Components/ListView.h"
+#include "Core/OrigamiBirdMatchGameObject.h"
 #include "Components/TextBlock.h"
 #include "Engine/LocalPlayer.h"
 #include "Subsystems/OrigamiBirdMatchSubsystem.h"
+#include "Types/SlateEnums.h"
 #include "ViewModels/VM_OrigamiBirdPropEntry.h"
 
 UOrigamiBirdDebugScreen::UOrigamiBirdDebugScreen(const FObjectInitializer& ObjectInitializer)
@@ -19,6 +21,7 @@ void UOrigamiBirdDebugScreen::NativeOnInitialized()
 
 	if (PropDefinitionListView)
 	{
+		PropDefinitionListView->SetSelectionMode(ESelectionMode::Single);
 		PropDefinitionListView->OnItemSelectionChanged().RemoveAll(this);
 		PropDefinitionListView->OnItemSelectionChanged().AddUObject(this, &UOrigamiBirdDebugScreen::HandlePropSelectionChanged);
 	}
@@ -80,6 +83,9 @@ void UOrigamiBirdDebugScreen::HandlePropSelectionChanged(UObject* Item)
 
 void UOrigamiBirdDebugScreen::RefreshPropDefinitionList()
 {
+	const FName PreviousSelectedPropId = SelectedPropId;
+	UObject* ItemToReselect = nullptr;
+
 	PropDefinitionEntries.Reset();
 	SelectedPropId = NAME_None;
 
@@ -94,6 +100,8 @@ void UOrigamiBirdDebugScreen::RefreshPropDefinitionList()
 		SetDebugStatus(NSLOCTEXT("OrigamiBird", "DebugNoSubsystem", "Match subsystem is unavailable."));
 		return;
 	}
+
+	UOrigamiBirdMatchGameObject* ActiveMatch = MatchSubsystem->GetActiveMatch();
 
 	TArray<FName> PropIds;
 	MatchSubsystem->GetAllPropIds(PropIds);
@@ -112,16 +120,31 @@ void UOrigamiBirdDebugScreen::RefreshPropDefinitionList()
 		}
 
 		UVM_OrigamiBirdPropEntry* Entry = NewObject<UVM_OrigamiBirdPropEntry>(this);
-		Entry->InitializeFromDefinition(PropId, Definition, Definition.InitialCount);
+		const int32 OwnedCount = ActiveMatch ? ActiveMatch->GetPropCount(PropId) : 0;
+		Entry->InitializeFromDefinition(PropId, Definition, OwnedCount);
 		PropDefinitionEntries.Add(Entry);
 
 		if (PropDefinitionListView)
 		{
 			PropDefinitionListView->AddItem(Entry);
 		}
+
+		if (PropId == PreviousSelectedPropId)
+		{
+			ItemToReselect = Entry;
+		}
 	}
 
-	SetDebugStatus(NSLOCTEXT("OrigamiBird", "DebugSelectProp", "Select a prop, then grant it to the active match."));
+	if (PropDefinitionListView && ItemToReselect)
+	{
+		PropDefinitionListView->SetSelectedItem(ItemToReselect);
+		SelectedPropId = PreviousSelectedPropId;
+	}
+
+	if (SelectedPropId.IsNone())
+	{
+		SetDebugStatus(NSLOCTEXT("OrigamiBird", "DebugSelectProp", "Select a prop, then grant it to the active match."));
+	}
 }
 
 void UOrigamiBirdDebugScreen::GrantSelectedProp(int32 Count)
@@ -141,10 +164,12 @@ void UOrigamiBirdDebugScreen::GrantSelectedProp(int32 Count)
 
 	if (MatchSubsystem->GrantPropToActiveMatch(SelectedPropId, Count))
 	{
-		SetDebugStatus(FText::Format(
+		const FText StatusText = FText::Format(
 			NSLOCTEXT("OrigamiBird", "DebugGrantSucceeded", "Granted {0} x{1}."),
 			FText::FromName(SelectedPropId),
-			FText::AsNumber(Count)));
+			FText::AsNumber(Count));
+		RefreshPropDefinitionList();
+		SetDebugStatus(StatusText);
 	}
 	else
 	{

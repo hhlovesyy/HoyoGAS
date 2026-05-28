@@ -45,7 +45,10 @@ private:
 	void EnsureDefaultVisualTree();
 	void BindEntryViewModel(UVM_OrigamiBirdPropEntry* InEntryViewModel);
 	void RefreshVisuals();
+	void RefreshSelectionVisual();
 
 	UPROPERTY(Transient)
 	TObjectPtr<UVM_OrigamiBirdPropEntry> CachedPropEntryViewModel;
+
+	bool bCachedIsSelected = false;
 };

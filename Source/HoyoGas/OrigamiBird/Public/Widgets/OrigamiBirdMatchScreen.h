@@ -60,6 +60,7 @@ private:
 	UFUNCTION()
 	void HandleTileClicked(FIntPoint BoardPosition);
 
+	void HandlePropSelectionChanged(UObject* Item);
 	void RefreshBoardFromViewModel();
 	void RefreshPropListFromViewModel();
 	void HandleViewModelFieldChanged(UObject* Object, UE::FieldNotification::FFieldId FieldId);

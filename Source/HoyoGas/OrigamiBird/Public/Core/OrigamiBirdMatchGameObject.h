@@ -62,6 +62,18 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "OrigamiBird|Props")
 	void ClearProps();
+
+	UFUNCTION(BlueprintCallable, Category = "OrigamiBird|Props")
+	bool UsePropWithResult(const FOrigamiBirdPropDefinitionRow& Definition, const FOrigamiBirdPropUseRequest& Request, FOrigamiBirdPropUseResult& OutResult);
+
+	// 道具策略使用的棋盘修改接口：移除一个格子，然后按配置决定是否继续触发三消连锁。
+	// 业务入口仍然是 UsePropWithResult，这个函数只给 UOrigamiBirdPropEffect 子类调用。
+	bool ApplyPropRemoveSingleTile(FIntPoint TargetPosition, bool bResolveAfterUse, FOrigamiBirdPropUseResult& OutResult);
+	bool ApplyPropRandomReplaceTile(FIntPoint TargetPosition, bool bResolveAfterUse, FOrigamiBirdPropUseResult& OutResult);
+	bool ApplyPropSwapColumns(int32 FirstColumn, int32 SecondColumn, bool bResolveAfterUse, FOrigamiBirdPropUseResult& OutResult);
+	bool ApplyPropCopyColumnToNeighbor(int32 SourceColumn, bool bResolveAfterUse, FOrigamiBirdPropUseResult& OutResult);
+	bool ApplyPropShuffleBoard(bool bResolveAfterUse, FOrigamiBirdPropUseResult& OutResult);
+	bool ApplyPropExplode3x3(FIntPoint CenterPosition, bool bResolveAfterUse, FOrigamiBirdPropUseResult& OutResult);
 	
 	//相关的事件
 	UPROPERTY(BlueprintAssignable, Category = "OrigamiBird")
@@ -91,7 +103,9 @@ private:
 
 	int32 ToIndex(FIntPoint Position) const;
 	bool IsInsideBoard(FIntPoint Position) const;
+	bool IsInsideColumn(int32 Column) const;
 	EOrigamiBirdTileType GenerateRandomTileType();
+	EOrigamiBirdTileType GenerateRandomTileTypeExcept(EOrigamiBirdTileType ExcludedType);
 	void GenerateInitialBoard();
 	void RebuildTileDefinitionMap();
 
@@ -133,4 +147,5 @@ private:
 	FOrigamiBirdResolveStep MakeMatchStep(const TArray<FIntPoint>& MatchPositions, int32 ComboIndex) const;
 	FOrigamiBirdResolveStep MakeRemoveStep(const TArray<FIntPoint>& MatchPositions, int32 ComboIndex) const;
 	FOrigamiBirdResolveStep MakeScoreStep(int32 ScoreDelta, int32 ComboIndex, int32 InRemovedTileCount) const;
+	void ResolveCurrentMatchesIntoSteps(TArray<FOrigamiBirdResolveStep>& OutSteps, int32& InOutTotalScoreDelta, int32& InOutTotalRemovedTileCount, int32& OutMaxComboIndex);
 };

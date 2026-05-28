@@ -6,6 +6,10 @@
     "Icon": "",
     "PropType": "RemoveSingleTile",
     "TargetType": "SingleTile",
+    "EffectClass": "/Script/HoyoGas.OrigamiBirdRemoveSingleTilePropEffect",
+    "EffectParams": [
+      { "Key": "ResolveAfterUse", "Value": "true" }
+    ],
     "InitialCount": 3,
     "bStackable": true,
     "MaxStackCount": 99,
@@ -13,12 +17,16 @@
     "ReplacementTileType": "None"
   },
   {
-    "Name": "Prop_ReplaceRedFruit",
-    "DisplayName": "Replace With Red",
-    "Description": "Select one tile and replace it with a red fruit.",
+    "Name": "Prop_RandomReplaceTile",
+    "DisplayName": "Random Replace",
+    "Description": "Select one tile and replace it with another random fruit.",
     "Icon": "",
     "PropType": "ReplaceTileType",
     "TargetType": "SingleTile",
+    "EffectClass": "/Script/HoyoGas.OrigamiBirdRandomReplaceTilePropEffect",
+    "EffectParams": [
+      { "Key": "ResolveAfterUse", "Value": "true" }
+    ],
     "InitialCount": 3,
     "bStackable": true,
     "MaxStackCount": 99,
@@ -32,23 +40,65 @@
     "Icon": "",
     "PropType": "SwapColumns",
     "TargetType": "TwoColumns",
+    "EffectClass": "/Script/HoyoGas.OrigamiBirdSwapColumnsPropEffect",
+    "EffectParams": [
+      { "Key": "ResolveAfterUse", "Value": "true" }
+    ],
     "InitialCount": 1,
-    "bStackable": false,
-    "MaxStackCount": 1,
+    "bStackable": true,
+    "MaxStackCount": 99,
     "bResolveAfterUse": true,
     "ReplacementTileType": "None"
   },
   {
     "Name": "Prop_CopyColumn",
-    "DisplayName": "Copy Column",
-    "Description": "Select a source column and a target column, then copy source tiles to target.",
+    "DisplayName": "Copy To Neighbor",
+    "Description": "Select one column. It copies to the right column, or left if it is the last column.",
     "Icon": "",
     "PropType": "CopyColumn",
-    "TargetType": "TwoColumns",
+    "TargetType": "SingleColumn",
+    "EffectClass": "/Script/HoyoGas.OrigamiBirdCopyColumnToNeighborPropEffect",
+    "EffectParams": [
+      { "Key": "ResolveAfterUse", "Value": "true" }
+    ],
     "InitialCount": 1,
-    "bStackable": false,
-    "MaxStackCount": 1,
+    "bStackable": true,
+    "MaxStackCount": 99,
     "bResolveAfterUse": true,
+    "ReplacementTileType": "None"
+  },
+  {
+    "Name": "Prop_ShuffleBoard",
+    "DisplayName": "Shuffle Board",
+    "Description": "Shuffle all falling tiles and resolve immediately.",
+    "Icon": "",
+    "PropType": "None",
+    "TargetType": "None",
+    "EffectClass": "/Script/HoyoGas.OrigamiBirdShuffleBoardPropEffect",
+    "EffectParams": [
+      { "Key": "ResolveAfterUse", "Value": "true" }
+    ],
+    "InitialCount": 1,
+    "bStackable": true,
+    "MaxStackCount": 99,
+    "bResolveAfterUse": true,
+    "ReplacementTileType": "None"
+  },
+  {
+    "Name": "Prop_Explode3x3",
+    "DisplayName": "3x3 Bomb",
+    "Description": "Select one tile and remove the 3x3 area around it. This direct removal gives no score.",
+    "Icon": "",
+    "PropType": "RemoveSingleTile",
+    "TargetType": "SingleTile",
+    "EffectClass": "/Script/HoyoGas.OrigamiBirdExplode3x3PropEffect",
+    "EffectParams": [
+      { "Key": "ResolveAfterUse", "Value": "false" }
+    ],
+    "InitialCount": 1,
+    "bStackable": true,
+    "MaxStackCount": 99,
+    "bResolveAfterUse": false,
     "ReplacementTileType": "None"
   }
 ]

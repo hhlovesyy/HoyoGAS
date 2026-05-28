@@ -8,6 +8,7 @@
 #include "InputCoreTypes.h"
 #include "Subsystems/OrigamiBirdMatchSubsystem.h"
 #include "Subsystems/MyPlayerUISubsystem.h"
+#include "Types/SlateEnums.h"
 #include "ViewModels/VM_OrigamiBirdMatchScreen.h"
 #include "ViewModels/VM_OrigamiBirdPropEntry.h"
 #include "Widgets/OrigamiBirdBoardWidget.h"
@@ -33,6 +34,13 @@ void UOrigamiBirdMatchScreen::NativeOnInitialized()
 	{
 		CloseButton->OnClicked.RemoveDynamic(this, &UOrigamiBirdMatchScreen::HandleCloseClicked);
 		CloseButton->OnClicked.AddDynamic(this, &UOrigamiBirdMatchScreen::HandleCloseClicked);
+	}
+
+	if (PropListView)
+	{
+		PropListView->SetSelectionMode(ESelectionMode::Single);
+		PropListView->OnItemSelectionChanged().RemoveAll(this);
+		PropListView->OnItemSelectionChanged().AddUObject(this, &UOrigamiBirdMatchScreen::HandlePropSelectionChanged);
 	}
 }
 
@@ -141,6 +149,21 @@ void UOrigamiBirdMatchScreen::HandleTileClicked(FIntPoint BoardPosition)
 		return;
 	}
 
+	if (MatchViewModel->HasSelectedProp())
+	{
+		FOrigamiBirdPropUseResult PropUseResult;
+		const bool bUsedProp = MatchViewModel->TryUseSelectedPropOnTile(BoardPosition, PropUseResult);
+		if (bUsedProp && BoardWidget)
+		{
+			BoardWidget->PlayPropUseResult(PropUseResult);
+		}
+		else
+		{
+			RefreshBoardFromViewModel();
+		}
+		return;
+	}
+
 	const bool bResolvedMove = MatchViewModel->SelectOrSwapTile(BoardPosition);
 	const FOrigamiBirdMoveResult& MoveResult = MatchViewModel->GetLastMoveResult();
 	const bool bAttemptedSwap =
@@ -159,6 +182,29 @@ void UOrigamiBirdMatchScreen::HandleTileClicked(FIntPoint BoardPosition)
 	}
 
 	RefreshBoardFromViewModel();
+}
+
+void UOrigamiBirdMatchScreen::HandlePropSelectionChanged(UObject* Item)
+{
+	if (UVM_OrigamiBirdMatchScreen* MatchViewModel = GetMatchViewModel())
+	{
+		UVM_OrigamiBirdPropEntry* PropEntry = Cast<UVM_OrigamiBirdPropEntry>(Item);
+		MatchViewModel->SelectPropEntry(PropEntry);
+
+		if (PropEntry && PropEntry->GetTargetType() == EOrigamiBirdPropTargetType::None)
+		{
+			FOrigamiBirdPropUseResult PropUseResult;
+			const bool bUsedProp = MatchViewModel->TryUseSelectedPropWithoutTarget(PropUseResult);
+			if (bUsedProp && BoardWidget)
+			{
+				BoardWidget->PlayPropUseResult(PropUseResult);
+			}
+			else
+			{
+				RefreshBoardFromViewModel();
+			}
+		}
+	}
 }
 
 void UOrigamiBirdMatchScreen::HandleViewModelFieldChanged(UObject* Object, UE::FieldNotification::FFieldId FieldId)

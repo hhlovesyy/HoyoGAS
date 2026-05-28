@@ -99,6 +99,31 @@ void UOrigamiBirdBoardWidget::PlayMoveResult(const FOrigamiBirdMoveResult& MoveR
 	PlayNextResolveStep();
 }
 
+void UOrigamiBirdBoardWidget::PlayPropUseResult(const FOrigamiBirdPropUseResult& PropUseResult)
+{
+	if (PropUseResult.ResolveSteps.IsEmpty())
+	{
+		if (!PropUseResult.FinalSnapshot.Tiles.IsEmpty())
+		{
+			ReconcileWithSnapshot(PropUseResult.FinalSnapshot);
+		}
+		SetBoardInputEnabled(true);
+		return;
+	}
+
+	if (!PropUseResult.InitialSnapshot.Tiles.IsEmpty())
+	{
+		ReconcileWithSnapshot(PropUseResult.InitialSnapshot);
+	}
+
+	PendingResolveSteps = PropUseResult.ResolveSteps;
+	PendingFinalSnapshot = PropUseResult.FinalSnapshot;
+	PendingResolveStepIndex = 0;
+	TileIdsPendingRemoval.Reset();
+	SetBoardInputEnabled(false);
+	PlayNextResolveStep();
+}
+
 void UOrigamiBirdBoardWidget::ClearBoard()
 {
 	if (BoardGrid)

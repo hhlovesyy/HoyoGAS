@@ -32,8 +32,14 @@ public:
 	FText GetStackRuleText() const;
 	void SetStackRuleText(const FText& InValue);
 
+	FText GetUsageText() const;
+	void SetUsageText(const FText& InValue);
+
 	bool GetIsStackable() const;
 	void SetIsStackable(bool bInValue);
+
+	EOrigamiBirdPropTargetType GetTargetType() const;
+	void SetTargetType(EOrigamiBirdPropTargetType InValue);
 
 	int32 GetCount() const;
 	void SetCount(int32 InValue);
@@ -58,8 +64,14 @@ private:
 	UPROPERTY(BlueprintReadWrite, FieldNotify, Getter, Setter, meta = (AllowPrivateAccess = "true"))
 	FText StackRuleText;
 
+	UPROPERTY(BlueprintReadWrite, FieldNotify, Getter, Setter, meta = (AllowPrivateAccess = "true"))
+	FText UsageText;
+
 	UPROPERTY(BlueprintReadWrite, FieldNotify, Getter = "GetIsStackable", Setter = "SetIsStackable", meta = (AllowPrivateAccess = "true"))
 	bool bIsStackable = true;
+
+	UPROPERTY(BlueprintReadWrite, FieldNotify, Getter, Setter, meta = (AllowPrivateAccess = "true"))
+	EOrigamiBirdPropTargetType TargetType = EOrigamiBirdPropTargetType::None;
 
 	UPROPERTY(BlueprintReadWrite, FieldNotify, Getter, Setter, meta = (AllowPrivateAccess = "true"))
 	int32 Count = 0;

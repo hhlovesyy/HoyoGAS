@@ -18,6 +18,7 @@ void UVM_OrigamiBirdMatchScreen::Teardown()
 	CurrentSnapshot = FOrigamiBirdBoardSnapshot();
 	LastMoveResult = FOrigamiBirdMoveResult();
 	bHasSelectedPosition = false;
+	ClearSelectedProp();
 	SetCanInteract(false);
 	SetPropEntries({});
 }
@@ -52,6 +53,7 @@ void UVM_OrigamiBirdMatchScreen::StartDefaultMatch()
 
 void UVM_OrigamiBirdMatchScreen::RestartMatch()
 {
+	ClearSelectedProp();
 	StartDefaultMatch();
 }
 
@@ -156,6 +158,150 @@ void UVM_OrigamiBirdMatchScreen::SetPropEntries(const TArray<TObjectPtr<UVM_Orig
 {
 	PropEntries = InEntries;
 	UE_MVVM_BROADCAST_FIELD_VALUE_CHANGED(PropEntries);
+}
+
+void UVM_OrigamiBirdMatchScreen::SelectPropEntry(UVM_OrigamiBirdPropEntry* Entry)
+{
+	if (!Entry)
+	{
+		ClearSelectedProp();
+		return;
+	}
+
+	SelectedPropId = Entry->GetPropId();
+	SelectedPropTargetType = Entry->GetTargetType();
+	PendingPropTargetColumns.Reset();
+	bHasSelectedPosition = false;
+	SelectedBoardPosition = FIntPoint(INDEX_NONE, INDEX_NONE);
+
+	SetStatusText(FText::Format(
+		NSLOCTEXT("OrigamiBird", "PropSelectedStatusFormat", "{0}: {1} {2}"),
+		Entry->GetDisplayNameText(),
+		Entry->GetDescriptionText(),
+		Entry->GetUsageText()));
+}
+
+void UVM_OrigamiBirdMatchScreen::ClearSelectedProp()
+{
+	SelectedPropId = NAME_None;
+	SelectedPropTargetType = EOrigamiBirdPropTargetType::None;
+	PendingPropTargetColumns.Reset();
+}
+
+bool UVM_OrigamiBirdMatchScreen::HasSelectedProp() const
+{
+	return !SelectedPropId.IsNone();
+}
+
+bool UVM_OrigamiBirdMatchScreen::TryUseSelectedPropOnTile(FIntPoint BoardPosition, FOrigamiBirdPropUseResult& OutResult)
+{
+	OutResult = FOrigamiBirdPropUseResult();
+	OutResult.PropId = SelectedPropId;
+
+	if (!HasSelectedProp())
+	{
+		OutResult.FailureReasonId = TEXT("NoSelectedProp");
+		return false;
+	}
+
+	if (!MatchSubsystem.IsValid())
+	{
+		OutResult.FailureReasonId = TEXT("NoMatchSubsystem");
+		SetStatusText(NSLOCTEXT("OrigamiBird", "PropUseNoSubsystem", "Match subsystem is unavailable."));
+		return false;
+	}
+
+	FOrigamiBirdPropUseRequest Request;
+	Request.PropId = SelectedPropId;
+
+	if (SelectedPropTargetType == EOrigamiBirdPropTargetType::SingleTile)
+	{
+		Request.TargetPositions.Add(BoardPosition);
+	}
+	else if (SelectedPropTargetType == EOrigamiBirdPropTargetType::SingleColumn)
+	{
+		Request.TargetColumns.Add(BoardPosition.X);
+	}
+	else if (SelectedPropTargetType == EOrigamiBirdPropTargetType::TwoColumns)
+	{
+		if (PendingPropTargetColumns.IsEmpty())
+		{
+			PendingPropTargetColumns.Add(BoardPosition.X);
+			SetStatusText(FText::Format(
+				NSLOCTEXT("OrigamiBird", "PropSelectSecondColumnFormat", "First column {0} selected. Choose the second column."),
+				FText::AsNumber(BoardPosition.X + 1)));
+			return false;
+		}
+
+		if (PendingPropTargetColumns[0] == BoardPosition.X)
+		{
+			SetStatusText(NSLOCTEXT("OrigamiBird", "PropSelectDifferentColumn", "Choose a different column."));
+			return false;
+		}
+
+		Request.TargetColumns.Add(PendingPropTargetColumns[0]);
+		Request.TargetColumns.Add(BoardPosition.X);
+	}
+	else
+	{
+		OutResult.FailureReasonId = TEXT("UnsupportedTargetType");
+		SetStatusText(NSLOCTEXT("OrigamiBird", "PropUseUnsupportedTarget", "This prop target type is not connected yet."));
+		return false;
+	}
+
+	const bool bUsed = MatchSubsystem->UsePropOnActiveMatch(Request, OutResult);
+	if (bUsed)
+	{
+		SetStatusText(NSLOCTEXT("OrigamiBird", "PropUseSucceeded", "Prop used."));
+		ClearSelectedProp();
+		return true;
+	}
+
+	SetStatusText(FText::Format(
+		NSLOCTEXT("OrigamiBird", "PropUseFailedFormat", "Prop failed: {0}"),
+		FText::FromName(OutResult.FailureReasonId)));
+	return false;
+}
+
+bool UVM_OrigamiBirdMatchScreen::TryUseSelectedPropWithoutTarget(FOrigamiBirdPropUseResult& OutResult)
+{
+	OutResult = FOrigamiBirdPropUseResult();
+	OutResult.PropId = SelectedPropId;
+
+	if (!HasSelectedProp())
+	{
+		OutResult.FailureReasonId = TEXT("NoSelectedProp");
+		return false;
+	}
+
+	if (!MatchSubsystem.IsValid())
+	{
+		OutResult.FailureReasonId = TEXT("NoMatchSubsystem");
+		SetStatusText(NSLOCTEXT("OrigamiBird", "PropUseNoSubsystem", "Match subsystem is unavailable."));
+		return false;
+	}
+
+	if (SelectedPropTargetType != EOrigamiBirdPropTargetType::None)
+	{
+		OutResult.FailureReasonId = TEXT("NeedsTarget");
+		return false;
+	}
+
+	FOrigamiBirdPropUseRequest Request;
+	Request.PropId = SelectedPropId;
+
+	const bool bUsed = MatchSubsystem->UsePropOnActiveMatch(Request, OutResult);
+	if (bUsed)
+	{
+		SetStatusText(NSLOCTEXT("OrigamiBird", "PropUseSucceeded", "Prop used."));
+		ClearSelectedProp();
+		return true;
+	}
+
+	SetStatusText(FText::Format(
+		NSLOCTEXT("OrigamiBird", "PropUseFailedFormat", "Prop failed: {0}"),
+		FText::FromName(OutResult.FailureReasonId)));
+	return false;
 }
 
 void UVM_OrigamiBirdMatchScreen::HandleBoardChanged(const FOrigamiBirdBoardSnapshot& Snapshot)

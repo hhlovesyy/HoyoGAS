@@ -1,5 +1,7 @@
 ﻿#include "Core/OrigamiBirdMatchGameObject.h"
 
+#include "Core/OrigamiBirdPropEffect.h"
+
 //在当前的 C++ 文件（.cpp）中，定义一个专属的自定义日志类别（Log Category）
 DEFINE_LOG_CATEGORY_STATIC(LogOrigamiBirdMatch, Log, All);
 
@@ -79,6 +81,11 @@ bool UOrigamiBirdMatchGameObject::IsInsideBoard(FIntPoint Position) const
 		&& Position.Y >= 0
 		&& Position.X < StartParams.BoardWidth
 		&& Position.Y < StartParams.BoardHeight;
+}
+
+bool UOrigamiBirdMatchGameObject::IsInsideColumn(int32 Column) const
+{
+	return Column >= 0 && Column < StartParams.BoardWidth;
 }
 
 const FOrigamiBirdTile* UOrigamiBirdMatchGameObject::GetTile(FIntPoint Position) const
@@ -194,6 +201,419 @@ void UOrigamiBirdMatchGameObject::ClearProps()
 
 	PropStacks.Reset();
 	BroadcastPropStacksChanged();
+}
+
+bool UOrigamiBirdMatchGameObject::UsePropWithResult(const FOrigamiBirdPropDefinitionRow& Definition, const FOrigamiBirdPropUseRequest& Request, FOrigamiBirdPropUseResult& OutResult)
+{
+	OutResult = FOrigamiBirdPropUseResult();
+	OutResult.PropId = Request.PropId;
+	OutResult.InitialSnapshot = GetSnapshot();
+
+	if (Request.PropId.IsNone())
+	{
+		OutResult.FailureReasonId = TEXT("InvalidPropId");
+		OutResult.FinalSnapshot = GetSnapshot();
+		return false;
+	}
+
+	if (Phase != EOrigamiBirdMatchPhase::WaitingInput)
+	{
+		OutResult.FailureReasonId = TEXT("InvalidPhase");
+		OutResult.FinalSnapshot = GetSnapshot();
+		return false;
+	}
+
+	if (GetPropCount(Request.PropId) <= 0)
+	{
+		OutResult.FailureReasonId = TEXT("PropNotOwned");
+		OutResult.FinalSnapshot = GetSnapshot();
+		return false;
+	}
+
+	if (!Definition.EffectClass)
+	{
+		OutResult.FailureReasonId = TEXT("MissingEffectClass");
+		OutResult.FinalSnapshot = GetSnapshot();
+		return false;
+	}
+
+	const UOrigamiBirdPropEffect* Effect = Definition.EffectClass->GetDefaultObject<UOrigamiBirdPropEffect>();
+	if (!Effect)
+	{
+		OutResult.FailureReasonId = TEXT("InvalidEffectClass");
+		OutResult.FinalSnapshot = GetSnapshot();
+		return false;
+	}
+
+	Phase = EOrigamiBirdMatchPhase::Resolving;
+	ClearSelection();
+
+	const bool bExecuted = Effect->Execute(this, Definition, Request, OutResult);
+	if (!bExecuted || !OutResult.bAccepted)
+	{
+		Phase = EOrigamiBirdMatchPhase::WaitingInput;
+		OutResult.bAccepted = false;
+		OutResult.FinalSnapshot = GetSnapshot();
+		BroadcastBoardChanged();
+		return false;
+	}
+
+	ConsumeProp(Request.PropId, 1);
+
+	Phase = EOrigamiBirdMatchPhase::WaitingInput;
+	CheckGameEnd();
+	OutResult.FinalSnapshot = GetSnapshot();
+
+	FOrigamiBirdResolveStep FinalStep;
+	FinalStep.StepType = EOrigamiBirdResolveStepType::FinalSnapshot;
+	FinalStep.SnapshotAfterStep = OutResult.FinalSnapshot;
+	OutResult.ResolveSteps.Add(FinalStep);
+
+	BroadcastBoardChanged();
+	return true;
+}
+
+bool UOrigamiBirdMatchGameObject::ApplyPropRemoveSingleTile(FIntPoint TargetPosition, bool bResolveAfterUse, FOrigamiBirdPropUseResult& OutResult)
+{
+	if (!IsInsideBoard(TargetPosition))
+	{
+		OutResult.FailureReasonId = TEXT("OutOfBoard");
+		return false;
+	}
+
+	const FOrigamiBirdTile* TargetTile = GetTile(TargetPosition);
+	if (!TargetTile || TargetTile->TileType == EOrigamiBirdTileType::None)
+	{
+		OutResult.FailureReasonId = TEXT("EmptyTile");
+		return false;
+	}
+
+	TArray<FIntPoint> RemovedPositions;
+	RemovedPositions.Add(TargetPosition);
+
+	FOrigamiBirdResolveStep RemoveStep = MakeRemoveStep(RemovedPositions, 0);
+	RemoveStep.SnapshotAfterStep = GetSnapshot();
+	OutResult.ResolveSteps.Add(RemoveStep);
+
+	RemoveTiles(RemovedPositions);
+	RemovedTileCount += RemovedPositions.Num();
+	OutResult.RemovedTileCount += RemovedPositions.Num();
+
+	CollapseAndRefill(&OutResult.ResolveSteps);
+
+	if (bResolveAfterUse)
+	{
+		int32 ResolveScoreDelta = 0;
+		int32 ResolveRemovedTileCount = 0;
+		int32 ResolveMaxComboIndex = 0;
+		ResolveCurrentMatchesIntoSteps(OutResult.ResolveSteps, ResolveScoreDelta, ResolveRemovedTileCount, ResolveMaxComboIndex);
+		OutResult.TotalScoreDelta += ResolveScoreDelta;
+		OutResult.RemovedTileCount += ResolveRemovedTileCount;
+	}
+
+	OutResult.bAccepted = true;
+	return true;
+}
+
+bool UOrigamiBirdMatchGameObject::ApplyPropRandomReplaceTile(FIntPoint TargetPosition, bool bResolveAfterUse, FOrigamiBirdPropUseResult& OutResult)
+{
+	if (!IsInsideBoard(TargetPosition))
+	{
+		OutResult.FailureReasonId = TEXT("OutOfBoard");
+		return false;
+	}
+
+	FOrigamiBirdTile* TargetTile = GetTile(TargetPosition);
+	if (!TargetTile || TargetTile->TileType == EOrigamiBirdTileType::None)
+	{
+		OutResult.FailureReasonId = TEXT("EmptyTile");
+		return false;
+	}
+
+	TArray<FIntPoint> Positions;
+	Positions.Add(TargetPosition);
+
+	FOrigamiBirdResolveStep RemoveStep = MakeRemoveStep(Positions, 0);
+	RemoveStep.SnapshotAfterStep = GetSnapshot();
+	OutResult.ResolveSteps.Add(RemoveStep);
+
+	TargetTile->TileType = GenerateRandomTileTypeExcept(TargetTile->TileType);
+	TargetTile->TileId = NextTileId++;
+	TargetTile->BoardPosition = TargetPosition;
+	TargetTile->bIsSelected = false;
+
+	FOrigamiBirdResolveStep SpawnStep;
+	SpawnStep.StepType = EOrigamiBirdResolveStepType::Spawn;
+	SpawnStep.AffectedTiles.Add(*TargetTile);
+	SpawnStep.AffectedPositions.Add(TargetPosition);
+	SpawnStep.SnapshotAfterStep = GetSnapshot();
+	OutResult.ResolveSteps.Add(SpawnStep);
+
+	if (bResolveAfterUse)
+	{
+		int32 ResolveScoreDelta = 0;
+		int32 ResolveRemovedTileCount = 0;
+		int32 ResolveMaxComboIndex = 0;
+		ResolveCurrentMatchesIntoSteps(OutResult.ResolveSteps, ResolveScoreDelta, ResolveRemovedTileCount, ResolveMaxComboIndex);
+		OutResult.TotalScoreDelta += ResolveScoreDelta;
+		OutResult.RemovedTileCount += ResolveRemovedTileCount;
+	}
+
+	OutResult.bAccepted = true;
+	return true;
+}
+
+bool UOrigamiBirdMatchGameObject::ApplyPropSwapColumns(int32 FirstColumn, int32 SecondColumn, bool bResolveAfterUse, FOrigamiBirdPropUseResult& OutResult)
+{
+	if (!IsInsideColumn(FirstColumn) || !IsInsideColumn(SecondColumn))
+	{
+		OutResult.FailureReasonId = TEXT("OutOfBoard");
+		return false;
+	}
+
+	if (FirstColumn == SecondColumn)
+	{
+		OutResult.FailureReasonId = TEXT("SameColumn");
+		return false;
+	}
+
+	FOrigamiBirdResolveStep SwapStep;
+	SwapStep.StepType = EOrigamiBirdResolveStepType::Swap;
+
+	for (int32 Y = 0; Y < StartParams.BoardHeight; ++Y)
+	{
+		const FIntPoint FirstPosition(FirstColumn, Y);
+		const FIntPoint SecondPosition(SecondColumn, Y);
+		const FOrigamiBirdTile* FirstTile = GetTile(FirstPosition);
+		const FOrigamiBirdTile* SecondTile = GetTile(SecondPosition);
+
+		if (FirstTile && FirstTile->TileId != INDEX_NONE)
+		{
+			FOrigamiBirdTileTransition Transition;
+			Transition.TileId = FirstTile->TileId;
+			Transition.TileType = FirstTile->TileType;
+			Transition.FromPosition = FirstPosition;
+			Transition.ToPosition = SecondPosition;
+			SwapStep.TileTransitions.Add(Transition);
+		}
+
+		if (SecondTile && SecondTile->TileId != INDEX_NONE)
+		{
+			FOrigamiBirdTileTransition Transition;
+			Transition.TileId = SecondTile->TileId;
+			Transition.TileType = SecondTile->TileType;
+			Transition.FromPosition = SecondPosition;
+			Transition.ToPosition = FirstPosition;
+			SwapStep.TileTransitions.Add(Transition);
+		}
+	}
+
+	OutResult.ResolveSteps.Add(SwapStep);
+
+	for (int32 Y = 0; Y < StartParams.BoardHeight; ++Y)
+	{
+		SwapTileData(FIntPoint(FirstColumn, Y), FIntPoint(SecondColumn, Y));
+	}
+
+	if (bResolveAfterUse)
+	{
+		int32 ResolveScoreDelta = 0;
+		int32 ResolveRemovedTileCount = 0;
+		int32 ResolveMaxComboIndex = 0;
+		ResolveCurrentMatchesIntoSteps(OutResult.ResolveSteps, ResolveScoreDelta, ResolveRemovedTileCount, ResolveMaxComboIndex);
+		OutResult.TotalScoreDelta += ResolveScoreDelta;
+		OutResult.RemovedTileCount += ResolveRemovedTileCount;
+	}
+
+	OutResult.bAccepted = true;
+	return true;
+}
+
+bool UOrigamiBirdMatchGameObject::ApplyPropCopyColumnToNeighbor(int32 SourceColumn, bool bResolveAfterUse, FOrigamiBirdPropUseResult& OutResult)
+{
+	if (!IsInsideColumn(SourceColumn))
+	{
+		OutResult.FailureReasonId = TEXT("OutOfBoard");
+		return false;
+	}
+
+	const int32 TargetColumn = IsInsideColumn(SourceColumn + 1) ? SourceColumn + 1 : SourceColumn - 1;
+	if (!IsInsideColumn(TargetColumn))
+	{
+		OutResult.FailureReasonId = TEXT("NoNeighborColumn");
+		return false;
+	}
+
+	TArray<FIntPoint> TargetPositions;
+	for (int32 Y = 0; Y < StartParams.BoardHeight; ++Y)
+	{
+		TargetPositions.Add(FIntPoint(TargetColumn, Y));
+	}
+
+	FOrigamiBirdResolveStep RemoveStep = MakeRemoveStep(TargetPositions, 0);
+	RemoveStep.SnapshotAfterStep = GetSnapshot();
+	OutResult.ResolveSteps.Add(RemoveStep);
+
+	FOrigamiBirdResolveStep SpawnStep;
+	SpawnStep.StepType = EOrigamiBirdResolveStepType::Spawn;
+
+	for (int32 Y = 0; Y < StartParams.BoardHeight; ++Y)
+	{
+		const FOrigamiBirdTile* SourceTile = GetTile(FIntPoint(SourceColumn, Y));
+		FOrigamiBirdTile* TargetTile = GetTile(FIntPoint(TargetColumn, Y));
+		if (!SourceTile || !TargetTile)
+		{
+			continue;
+		}
+
+		TargetTile->TileType = SourceTile->TileType;
+		TargetTile->TileId = NextTileId++;
+		TargetTile->BoardPosition = FIntPoint(TargetColumn, Y);
+		TargetTile->bIsSelected = false;
+
+		SpawnStep.AffectedTiles.Add(*TargetTile);
+		SpawnStep.AffectedPositions.Add(TargetTile->BoardPosition);
+	}
+
+	SpawnStep.SnapshotAfterStep = GetSnapshot();
+	OutResult.ResolveSteps.Add(SpawnStep);
+
+	if (bResolveAfterUse)
+	{
+		int32 ResolveScoreDelta = 0;
+		int32 ResolveRemovedTileCount = 0;
+		int32 ResolveMaxComboIndex = 0;
+		ResolveCurrentMatchesIntoSteps(OutResult.ResolveSteps, ResolveScoreDelta, ResolveRemovedTileCount, ResolveMaxComboIndex);
+		OutResult.TotalScoreDelta += ResolveScoreDelta;
+		OutResult.RemovedTileCount += ResolveRemovedTileCount;
+	}
+
+	OutResult.bAccepted = true;
+	return true;
+}
+
+bool UOrigamiBirdMatchGameObject::ApplyPropShuffleBoard(bool bResolveAfterUse, FOrigamiBirdPropUseResult& OutResult)
+{
+	TArray<FIntPoint> Positions;
+	TArray<EOrigamiBirdTileType> TileTypes;
+
+	for (int32 Y = 0; Y < StartParams.BoardHeight; ++Y)
+	{
+		for (int32 X = 0; X < StartParams.BoardWidth; ++X)
+		{
+			const FIntPoint Position(X, Y);
+			const FOrigamiBirdTile* Tile = GetTile(Position);
+			if (Tile && Tile->TileType != EOrigamiBirdTileType::None && CanFallTileType(Tile->TileType))
+			{
+				Positions.Add(Position);
+				TileTypes.Add(Tile->TileType);
+			}
+		}
+	}
+
+	if (Positions.Num() <= 1)
+	{
+		OutResult.FailureReasonId = TEXT("NotEnoughTiles");
+		return false;
+	}
+
+	FOrigamiBirdResolveStep RemoveStep = MakeRemoveStep(Positions, 0);
+	RemoveStep.SnapshotAfterStep = GetSnapshot();
+	OutResult.ResolveSteps.Add(RemoveStep);
+
+	for (int32 Index = TileTypes.Num() - 1; Index > 0; --Index)
+	{
+		const int32 SwapIndex = RandomStream.RandRange(0, Index);
+		TileTypes.Swap(Index, SwapIndex);
+	}
+
+	FOrigamiBirdResolveStep SpawnStep;
+	SpawnStep.StepType = EOrigamiBirdResolveStepType::Spawn;
+
+	for (int32 Index = 0; Index < Positions.Num(); ++Index)
+	{
+		FOrigamiBirdTile* Tile = GetTile(Positions[Index]);
+		if (!Tile)
+		{
+			continue;
+		}
+
+		Tile->TileType = TileTypes[Index];
+		Tile->TileId = NextTileId++;
+		Tile->BoardPosition = Positions[Index];
+		Tile->bIsSelected = false;
+
+		SpawnStep.AffectedTiles.Add(*Tile);
+		SpawnStep.AffectedPositions.Add(Tile->BoardPosition);
+	}
+
+	SpawnStep.SnapshotAfterStep = GetSnapshot();
+	OutResult.ResolveSteps.Add(SpawnStep);
+
+	if (bResolveAfterUse)
+	{
+		int32 ResolveScoreDelta = 0;
+		int32 ResolveRemovedTileCount = 0;
+		int32 ResolveMaxComboIndex = 0;
+		ResolveCurrentMatchesIntoSteps(OutResult.ResolveSteps, ResolveScoreDelta, ResolveRemovedTileCount, ResolveMaxComboIndex);
+		OutResult.TotalScoreDelta += ResolveScoreDelta;
+		OutResult.RemovedTileCount += ResolveRemovedTileCount;
+	}
+
+	OutResult.bAccepted = true;
+	return true;
+}
+
+bool UOrigamiBirdMatchGameObject::ApplyPropExplode3x3(FIntPoint CenterPosition, bool bResolveAfterUse, FOrigamiBirdPropUseResult& OutResult)
+{
+	if (!IsInsideBoard(CenterPosition))
+	{
+		OutResult.FailureReasonId = TEXT("OutOfBoard");
+		return false;
+	}
+
+	TArray<FIntPoint> RemovedPositions;
+	for (int32 Y = CenterPosition.Y - 1; Y <= CenterPosition.Y + 1; ++Y)
+	{
+		for (int32 X = CenterPosition.X - 1; X <= CenterPosition.X + 1; ++X)
+		{
+			const FIntPoint Position(X, Y);
+			const FOrigamiBirdTile* Tile = GetTile(Position);
+			if (Tile && Tile->TileType != EOrigamiBirdTileType::None && CanFallTileType(Tile->TileType))
+			{
+				RemovedPositions.Add(Position);
+			}
+		}
+	}
+
+	if (RemovedPositions.IsEmpty())
+	{
+		OutResult.FailureReasonId = TEXT("NoTilesToRemove");
+		return false;
+	}
+
+	FOrigamiBirdResolveStep RemoveStep = MakeRemoveStep(RemovedPositions, 0);
+	RemoveStep.SnapshotAfterStep = GetSnapshot();
+	OutResult.ResolveSteps.Add(RemoveStep);
+
+	RemoveTiles(RemovedPositions);
+	RemovedTileCount += RemovedPositions.Num();
+	OutResult.RemovedTileCount += RemovedPositions.Num();
+
+	CollapseAndRefill(&OutResult.ResolveSteps);
+
+	if (bResolveAfterUse)
+	{
+		int32 ResolveScoreDelta = 0;
+		int32 ResolveRemovedTileCount = 0;
+		int32 ResolveMaxComboIndex = 0;
+		ResolveCurrentMatchesIntoSteps(OutResult.ResolveSteps, ResolveScoreDelta, ResolveRemovedTileCount, ResolveMaxComboIndex);
+		OutResult.TotalScoreDelta += ResolveScoreDelta;
+		OutResult.RemovedTileCount += ResolveRemovedTileCount;
+	}
+
+	OutResult.bAccepted = true;
+	return true;
 }
 
 bool UOrigamiBirdMatchGameObject::CanMatchTileType(EOrigamiBirdTileType TileType) const
@@ -576,6 +996,28 @@ EOrigamiBirdTileType UOrigamiBirdMatchGameObject::GenerateRandomTileType()
 	return StartParams.AvailableTileTypes[0];
 }
 
+EOrigamiBirdTileType UOrigamiBirdMatchGameObject::GenerateRandomTileTypeExcept(EOrigamiBirdTileType ExcludedType)
+{
+	for (int32 Attempt = 0; Attempt < 30; ++Attempt)
+	{
+		const EOrigamiBirdTileType CandidateType = GenerateRandomTileType();
+		if (CandidateType != ExcludedType)
+		{
+			return CandidateType;
+		}
+	}
+
+	for (const EOrigamiBirdTileType CandidateType : StartParams.AvailableTileTypes)
+	{
+		if (CandidateType != ExcludedType && CanMatchTileType(CandidateType) && CanFallTileType(CandidateType))
+		{
+			return CandidateType;
+		}
+	}
+
+	return GenerateRandomTileType();
+}
+
 void UOrigamiBirdMatchGameObject::GenerateInitialBoard()
 {
 	//左上角原点，横轴方向往右是X正方向，纵轴方向往下是Y轴正方向
@@ -701,60 +1143,10 @@ bool UOrigamiBirdMatchGameObject::TrySwapTilesWithResult(FIntPoint From, FIntPoi
 	OutResult.UsedMoveDelta = 1; //额外多了一个步骤
 	OnMovesChanged.Broadcast(MovesRemaining);
 	
-	int32 ComboIndex = 0;
 	int32 TotalScoreDelta = 0;
 	int32 TotalRemovedTileCount = 0;
-	constexpr int32 MaxResolveIterations = 100;
-	int32 ResolveGuard = 0;
-	while (true) //开始连击解算
-	{
-		++ResolveGuard;
-		if (ResolveGuard > MaxResolveIterations)
-		{
-			UE_LOG(LogOrigamiBirdMatch, Warning, TEXT("TrySwapTilesWithResult reached max iterations."));
-			break;
-		}
-		const TArray<FIntPoint> Matches = FindAllMatches();
-		if (Matches.IsEmpty())
-		{
-			break; //没有新的匹配连击的了就退出
-		}
-		++ComboIndex;
-		FOrigamiBirdResolveStep MatchStep = MakeMatchStep(Matches, ComboIndex);
-		MatchStep.SnapshotAfterStep = GetSnapshot();
-		OutResult.ResolveSteps.Add(MatchStep);
-
-		FOrigamiBirdResolveStep RemoveStep = MakeRemoveStep(Matches, ComboIndex);
-		OutResult.ResolveSteps.Add(RemoveStep);
-		
-		int32 BaseScore = 0;
-		for (const FIntPoint& MatchPosition : Matches)
-		{
-			const FOrigamiBirdTile* Tile = GetTile(MatchPosition);
-			BaseScore += Tile ? GetTileScoreValue(Tile->TileType) : 0;
-		}
-		
-		const float ComboMultiplier =
-			ComboIndex == 1 ? 1.0f :
-			ComboIndex == 2 ? 1.2f :
-			ComboIndex == 3 ? 1.5f :
-			2.0f;
-		
-		const int32 ScoreDelta = FMath::RoundToInt(static_cast<float>(BaseScore) * ComboMultiplier);
-
-		RemoveTiles(Matches);
-		Score += ScoreDelta;
-		TotalScoreDelta += ScoreDelta;
-		TotalRemovedTileCount += Matches.Num();
-		RemovedTileCount += Matches.Num();
-		MaxCombo = FMath::Max(ComboIndex, MaxCombo);
-		
-		OnScoreChanged.Broadcast(Score);
-
-		OutResult.ResolveSteps.Add(MakeScoreStep(ScoreDelta, ComboIndex, Matches.Num()));
-
-		CollapseAndRefill(&OutResult.ResolveSteps);
-	}
+	int32 ComboIndex = 0;
+	ResolveCurrentMatchesIntoSteps(OutResult.ResolveSteps, TotalScoreDelta, TotalRemovedTileCount, ComboIndex);
 	
 	Phase = EOrigamiBirdMatchPhase::WaitingInput;
 	CheckGameEnd();
@@ -866,6 +1258,67 @@ FOrigamiBirdResolveStep UOrigamiBirdMatchGameObject::MakeScoreStep(
 	Step.RemovedTileCount = InRemovedTileCount;
 	Step.SnapshotAfterStep = GetSnapshot();
 	return Step;
+}
+
+void UOrigamiBirdMatchGameObject::ResolveCurrentMatchesIntoSteps(TArray<FOrigamiBirdResolveStep>& OutSteps, int32& InOutTotalScoreDelta, int32& InOutTotalRemovedTileCount, int32& OutMaxComboIndex)
+{
+	int32 ComboIndex = 0;
+	constexpr int32 MaxResolveIterations = 100;
+	int32 ResolveGuard = 0;
+
+	while (true)
+	{
+		++ResolveGuard;
+		if (ResolveGuard > MaxResolveIterations)
+		{
+			UE_LOG(LogOrigamiBirdMatch, Warning, TEXT("ResolveCurrentMatchesIntoSteps reached max iterations."));
+			break;
+		}
+
+		const TArray<FIntPoint> Matches = FindAllMatches();
+		if (Matches.IsEmpty())
+		{
+			break;
+		}
+
+		++ComboIndex;
+
+		FOrigamiBirdResolveStep MatchStep = MakeMatchStep(Matches, ComboIndex);
+		MatchStep.SnapshotAfterStep = GetSnapshot();
+		OutSteps.Add(MatchStep);
+
+		FOrigamiBirdResolveStep RemoveStep = MakeRemoveStep(Matches, ComboIndex);
+		OutSteps.Add(RemoveStep);
+
+		int32 BaseScore = 0;
+		for (const FIntPoint& MatchPosition : Matches)
+		{
+			const FOrigamiBirdTile* Tile = GetTile(MatchPosition);
+			BaseScore += Tile ? GetTileScoreValue(Tile->TileType) : 0;
+		}
+
+		const float ComboMultiplier =
+			ComboIndex == 1 ? 1.0f :
+			ComboIndex == 2 ? 1.2f :
+			ComboIndex == 3 ? 1.5f :
+			2.0f;
+
+		const int32 ScoreDelta = FMath::RoundToInt(static_cast<float>(BaseScore) * ComboMultiplier);
+
+		RemoveTiles(Matches);
+		Score += ScoreDelta;
+		InOutTotalScoreDelta += ScoreDelta;
+		InOutTotalRemovedTileCount += Matches.Num();
+		RemovedTileCount += Matches.Num();
+		MaxCombo = FMath::Max(ComboIndex, MaxCombo);
+
+		OnScoreChanged.Broadcast(Score);
+
+		OutSteps.Add(MakeScoreStep(ScoreDelta, ComboIndex, Matches.Num()));
+		CollapseAndRefill(&OutSteps);
+	}
+
+	OutMaxComboIndex = ComboIndex;
 }
 
 bool UOrigamiBirdMatchGameObject::SelectTile(FIntPoint BoardPosition)

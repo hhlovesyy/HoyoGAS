@@ -2,11 +2,31 @@
 
 #include "Engine/Texture2D.h"
 
+namespace
+{
+	FText MakePropUsageText(EOrigamiBirdPropTargetType TargetType)
+	{
+		switch (TargetType)
+		{
+		case EOrigamiBirdPropTargetType::SingleTile:
+			return NSLOCTEXT("OrigamiBird", "PropUsageSingleTile", "Use: select this prop, then click one tile on the board.");
+		case EOrigamiBirdPropTargetType::SingleColumn:
+			return NSLOCTEXT("OrigamiBird", "PropUsageSingleColumn", "Use: select this prop, then click one column.");
+		case EOrigamiBirdPropTargetType::TwoColumns:
+			return NSLOCTEXT("OrigamiBird", "PropUsageTwoColumns", "Use: select this prop, then choose two columns.");
+		default:
+			return NSLOCTEXT("OrigamiBird", "PropUsageNone", "Use: this prop does not need a board target.");
+		}
+	}
+}
+
 void UVM_OrigamiBirdPropEntry::InitializeFromDefinition(FName InPropId, const FOrigamiBirdPropDefinitionRow& Definition, int32 InCount)
 {
 	SetPropId(InPropId);
 	SetDisplayNameText(Definition.DisplayName.IsEmpty() ? FText::FromName(InPropId) : Definition.DisplayName);
 	SetDescriptionText(Definition.Description);
+	SetTargetType(Definition.TargetType);
+	SetUsageText(MakePropUsageText(Definition.TargetType));
 	SetIsStackable(Definition.bStackable);
 	SetCount(InCount);
 	SetCountText(FText::Format(NSLOCTEXT("OrigamiBird", "PropCountFormat", "x{0}"), FText::AsNumber(InCount)));
@@ -66,6 +86,16 @@ void UVM_OrigamiBirdPropEntry::SetStackRuleText(const FText& InValue)
 	UE_MVVM_SET_PROPERTY_VALUE(StackRuleText, InValue);
 }
 
+FText UVM_OrigamiBirdPropEntry::GetUsageText() const
+{
+	return UsageText;
+}
+
+void UVM_OrigamiBirdPropEntry::SetUsageText(const FText& InValue)
+{
+	UE_MVVM_SET_PROPERTY_VALUE(UsageText, InValue);
+}
+
 bool UVM_OrigamiBirdPropEntry::GetIsStackable() const
 {
 	return bIsStackable;
@@ -74,6 +104,16 @@ bool UVM_OrigamiBirdPropEntry::GetIsStackable() const
 void UVM_OrigamiBirdPropEntry::SetIsStackable(bool bInValue)
 {
 	UE_MVVM_SET_PROPERTY_VALUE(bIsStackable, bInValue);
+}
+
+EOrigamiBirdPropTargetType UVM_OrigamiBirdPropEntry::GetTargetType() const
+{
+	return TargetType;
+}
+
+void UVM_OrigamiBirdPropEntry::SetTargetType(EOrigamiBirdPropTargetType InValue)
+{
+	UE_MVVM_SET_PROPERTY_VALUE(TargetType, InValue);
 }
 
 int32 UVM_OrigamiBirdPropEntry::GetCount() const

@@ -239,6 +239,29 @@ bool UOrigamiBirdMatchSubsystem::ConsumePropFromActiveMatch(FName PropId, int32 
 	return ActiveMatch->ConsumeProp(PropId, Count);
 }
 
+bool UOrigamiBirdMatchSubsystem::UsePropOnActiveMatch(const FOrigamiBirdPropUseRequest& Request, FOrigamiBirdPropUseResult& OutResult)
+{
+	OutResult = FOrigamiBirdPropUseResult();
+	OutResult.PropId = Request.PropId;
+
+	if (!ActiveMatch)
+	{
+		OutResult.FailureReasonId = TEXT("NoActiveMatch");
+		UE_LOG(LogOrigamiBirdMatchSubsystem, Warning, TEXT("UsePropOnActiveMatch failed because there is no active match."));
+		return false;
+	}
+
+	FOrigamiBirdPropDefinitionRow PropDefinition;
+	if (!FindPropDefinition(Request.PropId, PropDefinition))
+	{
+		OutResult.FailureReasonId = TEXT("PropNotFound");
+		UE_LOG(LogOrigamiBirdMatchSubsystem, Warning, TEXT("UsePropOnActiveMatch failed because prop '%s' was not found."), *Request.PropId.ToString());
+		return false;
+	}
+
+	return ActiveMatch->UsePropWithResult(PropDefinition, Request, OutResult);
+}
+
 UDataTable* UOrigamiBirdMatchSubsystem::LoadTileDefinitionTable() const
 {
 	const UOrigamiBirdSettings* Settings = GetDefault<UOrigamiBirdSettings>();
