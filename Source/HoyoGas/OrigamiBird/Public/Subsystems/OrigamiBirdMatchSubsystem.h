@@ -58,7 +58,7 @@ public:
 	bool ConsumePropFromActiveMatch(FName PropId, int32 Count = 1);
 
 	UFUNCTION(BlueprintCallable, Category = "OrigamiBird|Props")
-	bool UsePropOnActiveMatch(const FOrigamiBirdPropUseRequest& Request, FOrigamiBirdPropUseResult& OutResult);
+	bool UsePropOnActiveMatch(const FOrigamiBirdPropUseRequest& Request, FOrigamiBirdActionResult& OutResult);
 
 	UFUNCTION(BlueprintCallable, Category = "OrigamiBird")
 	UDataTable* LoadTileDefinitionTable() const;

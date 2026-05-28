@@ -12,11 +12,8 @@
 
 namespace
 {
-	constexpr float SwapStepDuration = 0.14f;
-	constexpr float MatchStepDuration = 0.10f;
-	constexpr float RemoveStepDuration = 0.14f;
-	constexpr float FallStepDuration = 0.18f;
-	constexpr float SpawnStepDuration = 0.14f;
+	constexpr float DefaultEventDuration = 0.01f;
+	constexpr float EventStartTimeTolerance = 0.001f;
 
 	UClass* FindDefaultTileVisualWidgetClass()
 	{
@@ -53,7 +50,7 @@ void UOrigamiBirdBoardWidget::NativeDestruct()
 {
 	if (UWorld* World = GetWorld())
 	{
-		World->GetTimerManager().ClearTimer(ResolveStepTimerHandle);
+		World->GetTimerManager().ClearTimer(PresentationEventTimerHandle);
 	}
 
 	ClearBoard();
@@ -63,65 +60,46 @@ void UOrigamiBirdBoardWidget::NativeDestruct()
 void UOrigamiBirdBoardWidget::BuildFromSnapshot(const FOrigamiBirdBoardSnapshot& Snapshot, UOrigamiBirdMatchSubsystem* InMatchSubsystem)
 {
 	MatchSubsystem = InMatchSubsystem;
-	PendingResolveSteps.Reset();
-	PendingResolveStepIndex = 0;
+	PendingPresentationTimeline = FOrigamiBirdPresentationTimeline();
+	PendingPresentationEventIndex = 0;
 
 	if (UWorld* World = GetWorld())
 	{
-		World->GetTimerManager().ClearTimer(ResolveStepTimerHandle);
+		World->GetTimerManager().ClearTimer(PresentationEventTimerHandle);
 	}
 
 	ReconcileWithSnapshot(Snapshot);
 }
 
-void UOrigamiBirdBoardWidget::PlayMoveResult(const FOrigamiBirdMoveResult& MoveResult)
+void UOrigamiBirdBoardWidget::PlayActionResult(const FOrigamiBirdActionResult& ActionResult)
 {
-	if (MoveResult.ResolveSteps.IsEmpty())
-	{
-		if (!MoveResult.FinalSnapshot.Tiles.IsEmpty())
-		{
-			ReconcileWithSnapshot(MoveResult.FinalSnapshot);
-		}
-		SetBoardInputEnabled(true);
-		return;
-	}
-
-	if (!MoveResult.InitialSnapshot.Tiles.IsEmpty())
-	{
-		ReconcileWithSnapshot(MoveResult.InitialSnapshot);
-	}
-
-	PendingResolveSteps = MoveResult.ResolveSteps;
-	PendingFinalSnapshot = MoveResult.FinalSnapshot;
-	PendingResolveStepIndex = 0;
-	TileIdsPendingRemoval.Reset();
-	SetBoardInputEnabled(false);
-	PlayNextResolveStep();
+	PlayPresentationTimeline(ActionResult.PresentationTimeline, ActionResult.InitialSnapshot);
 }
 
-void UOrigamiBirdBoardWidget::PlayPropUseResult(const FOrigamiBirdPropUseResult& PropUseResult)
+void UOrigamiBirdBoardWidget::PlayPresentationTimeline(
+	const FOrigamiBirdPresentationTimeline& Timeline,
+	const FOrigamiBirdBoardSnapshot& InitialSnapshot)
 {
-	if (PropUseResult.ResolveSteps.IsEmpty())
+	if (!InitialSnapshot.Tiles.IsEmpty())
 	{
-		if (!PropUseResult.FinalSnapshot.Tiles.IsEmpty())
+		ReconcileWithSnapshot(InitialSnapshot);
+	}
+
+	if (Timeline.Events.IsEmpty())
+	{
+		if (!Timeline.FinalSnapshot.Tiles.IsEmpty())
 		{
-			ReconcileWithSnapshot(PropUseResult.FinalSnapshot);
+			ReconcileWithSnapshot(Timeline.FinalSnapshot);
 		}
 		SetBoardInputEnabled(true);
 		return;
 	}
 
-	if (!PropUseResult.InitialSnapshot.Tiles.IsEmpty())
-	{
-		ReconcileWithSnapshot(PropUseResult.InitialSnapshot);
-	}
-
-	PendingResolveSteps = PropUseResult.ResolveSteps;
-	PendingFinalSnapshot = PropUseResult.FinalSnapshot;
-	PendingResolveStepIndex = 0;
+	PendingPresentationTimeline = Timeline;
+	PendingPresentationEventIndex = 0;
 	TileIdsPendingRemoval.Reset();
 	SetBoardInputEnabled(false);
-	PlayNextResolveStep();
+	PlayNextPresentationEvent();
 }
 
 void UOrigamiBirdBoardWidget::ClearBoard()
@@ -133,8 +111,8 @@ void UOrigamiBirdBoardWidget::ClearBoard()
 
 	TileWidgetsById.Reset();
 	TileIdByPosition.Reset();
-	PendingResolveSteps.Reset();
-	PendingResolveStepIndex = 0;
+	PendingPresentationTimeline = FOrigamiBirdPresentationTimeline();
+	PendingPresentationEventIndex = 0;
 	TileIdsPendingRemoval.Reset();
 }
 
@@ -161,20 +139,15 @@ void UOrigamiBirdBoardWidget::HandleTileVisualClicked(FIntPoint BoardPosition)
 	OnTileClicked.Broadcast(BoardPosition);
 }
 
-void UOrigamiBirdBoardWidget::HandleResolveStepDelayFinished()
+void UOrigamiBirdBoardWidget::HandlePresentationEventDelayFinished()
 {
-	if (PendingResolveSteps.IsValidIndex(PendingResolveStepIndex)
-		&& PendingResolveSteps[PendingResolveStepIndex].StepType == EOrigamiBirdResolveStepType::Remove)
+	for (const int32 TileId : TileIdsPendingRemoval)
 	{
-		for (const int32 TileId : TileIdsPendingRemoval)
-		{
-			RemoveTileVisual(TileId);
-		}
-		TileIdsPendingRemoval.Reset();
+		RemoveTileVisual(TileId);
 	}
+	TileIdsPendingRemoval.Reset();
 
-	++PendingResolveStepIndex;
-	PlayNextResolveStep();
+	PlayNextPresentationEvent();
 }
 
 void UOrigamiBirdBoardWidget::EnsureDefaultBoardTree()
@@ -226,53 +199,56 @@ void UOrigamiBirdBoardWidget::ReconcileWithSnapshot(const FOrigamiBirdBoardSnaps
 	}
 }
 
-void UOrigamiBirdBoardWidget::PlayNextResolveStep()
+void UOrigamiBirdBoardWidget::PlayNextPresentationEvent()
 {
-	if (PendingResolveStepIndex >= PendingResolveSteps.Num())
+	if (PendingPresentationEventIndex >= PendingPresentationTimeline.Events.Num())
 	{
-		FinishResolveSequence();
+		FinishPresentationTimeline();
 		return;
 	}
 
-	const FOrigamiBirdResolveStep& Step = PendingResolveSteps[PendingResolveStepIndex];
-	PlayResolveStep(Step);
+	const float BatchStartTime = PendingPresentationTimeline.Events[PendingPresentationEventIndex].StartTime;
+	float BatchDuration = 0.0f;
 
-	float StepDuration = 0.0f;
-	switch (Step.StepType)
+	while (PendingPresentationTimeline.Events.IsValidIndex(PendingPresentationEventIndex)
+		&& FMath::IsNearlyEqual(
+			PendingPresentationTimeline.Events[PendingPresentationEventIndex].StartTime,
+			BatchStartTime,
+			EventStartTimeTolerance))
 	{
-	case EOrigamiBirdResolveStepType::Swap:
-		StepDuration = SwapStepDuration;
-		break;
-	case EOrigamiBirdResolveStepType::Match:
-		StepDuration = MatchStepDuration;
-		break;
-	case EOrigamiBirdResolveStepType::Remove:
-		StepDuration = RemoveStepDuration;
-		break;
-	case EOrigamiBirdResolveStepType::Fall:
-		StepDuration = FallStepDuration;
-		break;
-	case EOrigamiBirdResolveStepType::Spawn:
-		StepDuration = SpawnStepDuration;
-		break;
-	default:
-		StepDuration = 0.01f;
-		break;
+		const FOrigamiBirdPresentationEvent& Event = PendingPresentationTimeline.Events[PendingPresentationEventIndex];
+		PlayPresentationEvent(Event);
+		BatchDuration = FMath::Max(BatchDuration, Event.Duration);
+		++PendingPresentationEventIndex;
+	}
+
+	float Delay = FMath::Max(BatchDuration, DefaultEventDuration);
+	if (PendingPresentationTimeline.Events.IsValidIndex(PendingPresentationEventIndex))
+	{
+		const float NextStartTime = PendingPresentationTimeline.Events[PendingPresentationEventIndex].StartTime;
+		Delay = FMath::Max(Delay, NextStartTime - BatchStartTime);
 	}
 
 	if (UWorld* World = GetWorld())
 	{
-		World->GetTimerManager().SetTimer(ResolveStepTimerHandle, this, &UOrigamiBirdBoardWidget::HandleResolveStepDelayFinished, StepDuration, false);
+		World->GetTimerManager().SetTimer(
+			PresentationEventTimerHandle,
+			this,
+			&UOrigamiBirdBoardWidget::HandlePresentationEventDelayFinished,
+			Delay,
+			false);
 	}
 }
 
-void UOrigamiBirdBoardWidget::PlayResolveStep(const FOrigamiBirdResolveStep& Step)
+void UOrigamiBirdBoardWidget::PlayPresentationEvent(const FOrigamiBirdPresentationEvent& Event)
 {
-	switch (Step.StepType)
+	const float EventDuration = FMath::Max(Event.Duration, DefaultEventDuration);
+
+	switch (Event.EventType)
 	{
-	case EOrigamiBirdResolveStepType::Swap:
-	case EOrigamiBirdResolveStepType::Fall:
-		for (const FOrigamiBirdTileTransition& Transition : Step.TileTransitions)
+	case EOrigamiBirdPresentationEventType::Swap:
+	case EOrigamiBirdPresentationEventType::Fall:
+		for (const FOrigamiBirdTileTransition& Transition : Event.TileTransitions)
 		{
 			UOrigamiBirdTileVisualWidget* TileVisual = FindTileVisualById(Transition.TileId);
 			if (!TileVisual)
@@ -285,36 +261,54 @@ void UOrigamiBirdBoardWidget::PlayResolveStep(const FOrigamiBirdResolveStep& Ste
 				TileVisual,
 				GetRenderOffsetBetween(Transition.FromPosition, Transition.ToPosition),
 				FVector2D::ZeroVector,
-				Step.StepType == EOrigamiBirdResolveStepType::Swap ? SwapStepDuration : FallStepDuration,
+				EventDuration,
 				EHoyoWidgetTweenEasing::EaseOut,
 				2.0f);
 		}
 		break;
 
-	case EOrigamiBirdResolveStepType::Match:
-		for (const FOrigamiBirdTile& Tile : Step.AffectedTiles)
+	case EOrigamiBirdPresentationEventType::MatchHighlight:
+		for (const FOrigamiBirdTile& Tile : Event.AffectedTiles)
 		{
 			if (UOrigamiBirdTileVisualWidget* TileVisual = FindTileVisualById(Tile.TileId))
 			{
-				UHoyoWidgetTweenLibrary::TweenRenderScale(TileVisual, FVector2D(1.0f, 1.0f), FVector2D(1.12f, 1.12f), MatchStepDuration, EHoyoWidgetTweenEasing::EaseOut, 2.0f);
+				UHoyoWidgetTweenLibrary::TweenRenderScale(
+					TileVisual,
+					FVector2D(1.0f, 1.0f),
+					FVector2D(1.12f, 1.12f),
+					EventDuration,
+					EHoyoWidgetTweenEasing::EaseOut,
+					2.0f);
 			}
 		}
 		break;
 
-	case EOrigamiBirdResolveStepType::Remove:
-		for (const FOrigamiBirdTile& Tile : Step.AffectedTiles)
+	case EOrigamiBirdPresentationEventType::Remove:
+		for (const FOrigamiBirdTile& Tile : Event.AffectedTiles)
 		{
 			if (UOrigamiBirdTileVisualWidget* TileVisual = FindTileVisualById(Tile.TileId))
 			{
-				UHoyoWidgetTweenLibrary::TweenRenderScale(TileVisual, FVector2D(1.12f, 1.12f), FVector2D(0.2f, 0.2f), RemoveStepDuration, EHoyoWidgetTweenEasing::EaseIn, 2.0f);
-				UHoyoWidgetTweenLibrary::TweenRenderOpacity(TileVisual, 1.0f, 0.0f, RemoveStepDuration, EHoyoWidgetTweenEasing::EaseIn, 2.0f);
+				UHoyoWidgetTweenLibrary::TweenRenderScale(
+					TileVisual,
+					FVector2D(1.12f, 1.12f),
+					FVector2D(0.2f, 0.2f),
+					EventDuration,
+					EHoyoWidgetTweenEasing::EaseIn,
+					2.0f);
+				UHoyoWidgetTweenLibrary::TweenRenderOpacity(
+					TileVisual,
+					1.0f,
+					0.0f,
+					EventDuration,
+					EHoyoWidgetTweenEasing::EaseIn,
+					2.0f);
 				TileIdsPendingRemoval.AddUnique(Tile.TileId);
 			}
 		}
 		break;
 
-	case EOrigamiBirdResolveStepType::Spawn:
-		for (const FOrigamiBirdTile& Tile : Step.AffectedTiles)
+	case EOrigamiBirdPresentationEventType::Spawn:
+		for (const FOrigamiBirdTile& Tile : Event.AffectedTiles)
 		{
 			if (UOrigamiBirdTileVisualWidget* TileVisual = CreateTileVisual(Tile))
 			{
@@ -322,34 +316,53 @@ void UOrigamiBirdBoardWidget::PlayResolveStep(const FOrigamiBirdResolveStep& Ste
 				TileVisual->SetRenderScale(FVector2D(0.2f, 0.2f));
 				TileVisual->SetRenderOpacity(0.0f);
 				TileVisual->SetRenderTranslation(FVector2D(0.0f, -TileCellSize));
-				UHoyoWidgetTweenLibrary::TweenRenderTranslation(TileVisual, FVector2D(0.0f, -TileCellSize), FVector2D::ZeroVector, SpawnStepDuration, EHoyoWidgetTweenEasing::EaseOut, 2.0f);
-				UHoyoWidgetTweenLibrary::TweenRenderScale(TileVisual, FVector2D(0.2f, 0.2f), FVector2D(1.0f, 1.0f), SpawnStepDuration, EHoyoWidgetTweenEasing::EaseOut, 2.0f);
-				UHoyoWidgetTweenLibrary::TweenRenderOpacity(TileVisual, 0.0f, 1.0f, SpawnStepDuration, EHoyoWidgetTweenEasing::EaseOut, 2.0f);
+				UHoyoWidgetTweenLibrary::TweenRenderTranslation(
+					TileVisual,
+					FVector2D(0.0f, -TileCellSize),
+					FVector2D::ZeroVector,
+					EventDuration,
+					EHoyoWidgetTweenEasing::EaseOut,
+					2.0f);
+				UHoyoWidgetTweenLibrary::TweenRenderScale(
+					TileVisual,
+					FVector2D(0.2f, 0.2f),
+					FVector2D(1.0f, 1.0f),
+					EventDuration,
+					EHoyoWidgetTweenEasing::EaseOut,
+					2.0f);
+				UHoyoWidgetTweenLibrary::TweenRenderOpacity(
+					TileVisual,
+					0.0f,
+					1.0f,
+					EventDuration,
+					EHoyoWidgetTweenEasing::EaseOut,
+					2.0f);
 			}
 		}
 		break;
 
-	case EOrigamiBirdResolveStepType::FinalSnapshot:
-		if (!Step.SnapshotAfterStep.Tiles.IsEmpty())
+	case EOrigamiBirdPresentationEventType::BoardSync:
+		if (!Event.SnapshotAfterEvent.Tiles.IsEmpty())
 		{
-			ReconcileWithSnapshot(Step.SnapshotAfterStep);
+			ReconcileWithSnapshot(Event.SnapshotAfterEvent);
 		}
 		break;
 
+	case EOrigamiBirdPresentationEventType::Score:
 	default:
 		break;
 	}
 }
 
-void UOrigamiBirdBoardWidget::FinishResolveSequence()
+void UOrigamiBirdBoardWidget::FinishPresentationTimeline()
 {
-	if (!PendingFinalSnapshot.Tiles.IsEmpty())
+	if (!PendingPresentationTimeline.FinalSnapshot.Tiles.IsEmpty())
 	{
-		ReconcileWithSnapshot(PendingFinalSnapshot);
+		ReconcileWithSnapshot(PendingPresentationTimeline.FinalSnapshot);
 	}
 
-	PendingResolveSteps.Reset();
-	PendingResolveStepIndex = 0;
+	PendingPresentationTimeline = FOrigamiBirdPresentationTimeline();
+	PendingPresentationEventIndex = 0;
 	TileIdsPendingRemoval.Reset();
 	SetBoardInputEnabled(true);
 }

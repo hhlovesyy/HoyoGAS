@@ -2,11 +2,25 @@
 
 #include "Core/OrigamiBirdMatchGameObject.h"
 
+bool UOrigamiBirdRemoveSingleTilePropEffect::ValidateDefinition(const FOrigamiBirdPropDefinitionRow& Definition, FString& OutError) const
+{
+	if (Definition.TargetType != EOrigamiBirdPropTargetType::SingleTile)
+	{
+		OutError = FString::Printf(
+			TEXT("TargetType=%d does not match expected TargetType=%d"),
+			static_cast<int32>(Definition.TargetType),
+			static_cast<int32>(EOrigamiBirdPropTargetType::SingleTile));
+		return false;
+	}
+
+	return true;
+}
+
 bool UOrigamiBirdRemoveSingleTilePropEffect::Execute_Implementation(
 	UOrigamiBirdMatchGameObject* Match,
 	const FOrigamiBirdPropDefinitionRow& Definition,
 	const FOrigamiBirdPropUseRequest& Request,
-	FOrigamiBirdPropUseResult& OutResult) const
+	FOrigamiBirdActionResult& OutResult) const
 {
 	if (!Match)
 	{
@@ -20,6 +34,5 @@ bool UOrigamiBirdRemoveSingleTilePropEffect::Execute_Implementation(
 		return false;
 	}
 
-	const bool bResolveAfterUse = GetBoolParam(Definition, TEXT("ResolveAfterUse"), Definition.bResolveAfterUse);
-	return Match->ApplyPropRemoveSingleTile(Request.TargetPositions[0], bResolveAfterUse, OutResult);
+	return Match->ApplyPropRemoveSingleTile(Request.TargetPositions[0], Definition.bResolveAfterUse, OutResult);
 }

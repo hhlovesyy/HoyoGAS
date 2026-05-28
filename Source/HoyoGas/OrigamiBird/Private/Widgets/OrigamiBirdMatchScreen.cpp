@@ -151,11 +151,11 @@ void UOrigamiBirdMatchScreen::HandleTileClicked(FIntPoint BoardPosition)
 
 	if (MatchViewModel->HasSelectedProp())
 	{
-		FOrigamiBirdPropUseResult PropUseResult;
-		const bool bUsedProp = MatchViewModel->TryUseSelectedPropOnTile(BoardPosition, PropUseResult);
+		FOrigamiBirdActionResult ActionResult;
+		const bool bUsedProp = MatchViewModel->TryUseSelectedPropOnTile(BoardPosition, ActionResult);
 		if (bUsedProp && BoardWidget)
 		{
-			BoardWidget->PlayPropUseResult(PropUseResult);
+			BoardWidget->PlayActionResult(ActionResult);
 		}
 		else
 		{
@@ -165,18 +165,18 @@ void UOrigamiBirdMatchScreen::HandleTileClicked(FIntPoint BoardPosition)
 	}
 
 	const bool bResolvedMove = MatchViewModel->SelectOrSwapTile(BoardPosition);
-	const FOrigamiBirdMoveResult& MoveResult = MatchViewModel->GetLastMoveResult();
+	const FOrigamiBirdActionResult& ActionResult = MatchViewModel->GetLastActionResult();
 	const bool bAttemptedSwap =
-		MoveResult.From.X != INDEX_NONE
-		&& MoveResult.From.Y != INDEX_NONE
-		&& MoveResult.To.X != INDEX_NONE
-		&& MoveResult.To.Y != INDEX_NONE;
+		ActionResult.From.X != INDEX_NONE
+		&& ActionResult.From.Y != INDEX_NONE
+		&& ActionResult.To.X != INDEX_NONE
+		&& ActionResult.To.Y != INDEX_NONE;
 
-	if (bAttemptedSwap && (bResolvedMove || MoveResult.FailureReasonId == TEXT("NoMatch")))
+	if (bAttemptedSwap && (bResolvedMove || ActionResult.FailureReasonId == TEXT("NoMatch")))
 	{
 		if (BoardWidget)
 		{
-			BoardWidget->PlayMoveResult(MoveResult);
+			BoardWidget->PlayActionResult(ActionResult);
 		}
 		return;
 	}
@@ -193,11 +193,11 @@ void UOrigamiBirdMatchScreen::HandlePropSelectionChanged(UObject* Item)
 
 		if (PropEntry && PropEntry->GetTargetType() == EOrigamiBirdPropTargetType::None)
 		{
-			FOrigamiBirdPropUseResult PropUseResult;
-			const bool bUsedProp = MatchViewModel->TryUseSelectedPropWithoutTarget(PropUseResult);
+			FOrigamiBirdActionResult ActionResult;
+			const bool bUsedProp = MatchViewModel->TryUseSelectedPropWithoutTarget(ActionResult);
 			if (bUsedProp && BoardWidget)
 			{
-				BoardWidget->PlayPropUseResult(PropUseResult);
+				BoardWidget->PlayActionResult(ActionResult);
 			}
 			else
 			{

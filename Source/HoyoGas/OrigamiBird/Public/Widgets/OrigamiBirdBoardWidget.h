@@ -13,7 +13,7 @@ class UTexture2D;
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOrigamiBirdBoardTileClickedEvent, FIntPoint, BoardPosition);
 
 // 三消棋盘表现层。
-// 它负责把逻辑层的 Snapshot / MoveResult 转成格子 Widget 的创建、移动、消失和生成表现。
+// 它负责把逻辑层的 Snapshot / ActionResult 转成格子 Widget 的创建、移动、消失和生成表现。
 UCLASS(BlueprintType)
 class HOYOGAS_API UOrigamiBirdBoardWidget : public UUserWidget
 {
@@ -27,10 +27,10 @@ public:
 	void BuildFromSnapshot(const FOrigamiBirdBoardSnapshot& Snapshot, UOrigamiBirdMatchSubsystem* InMatchSubsystem);
 
 	UFUNCTION(BlueprintCallable, Category = "OrigamiBird")
-	void PlayMoveResult(const FOrigamiBirdMoveResult& MoveResult);
+	void PlayActionResult(const FOrigamiBirdActionResult& ActionResult);
 
 	UFUNCTION(BlueprintCallable, Category = "OrigamiBird")
-	void PlayPropUseResult(const FOrigamiBirdPropUseResult& PropUseResult);
+	void PlayPresentationTimeline(const FOrigamiBirdPresentationTimeline& Timeline, const FOrigamiBirdBoardSnapshot& InitialSnapshot);
 
 	UFUNCTION(BlueprintCallable, Category = "OrigamiBird")
 	void ClearBoard();
@@ -58,14 +58,14 @@ private:
 	void HandleTileVisualClicked(FIntPoint BoardPosition);
 
 	UFUNCTION()
-	void HandleResolveStepDelayFinished();
+	void HandlePresentationEventDelayFinished();
 
 	void EnsureDefaultBoardTree();
 	void RebuildPositionMap();
 	void ReconcileWithSnapshot(const FOrigamiBirdBoardSnapshot& Snapshot);
-	void PlayNextResolveStep();
-	void PlayResolveStep(const FOrigamiBirdResolveStep& Step);
-	void FinishResolveSequence();
+	void PlayNextPresentationEvent();
+	void PlayPresentationEvent(const FOrigamiBirdPresentationEvent& Event);
+	void FinishPresentationTimeline();
 
 	UOrigamiBirdTileVisualWidget* CreateTileVisual(const FOrigamiBirdTile& Tile);
 	UOrigamiBirdTileVisualWidget* FindTileVisualById(int32 TileId) const;
@@ -83,10 +83,9 @@ private:
 	TMap<int32, TObjectPtr<UOrigamiBirdTileVisualWidget>> TileWidgetsById;
 
 	TMap<FIntPoint, int32> TileIdByPosition;
-	TArray<FOrigamiBirdResolveStep> PendingResolveSteps;
-	FOrigamiBirdBoardSnapshot PendingFinalSnapshot;
+	FOrigamiBirdPresentationTimeline PendingPresentationTimeline;
 	TArray<int32> TileIdsPendingRemoval;
-	FTimerHandle ResolveStepTimerHandle;
-	int32 PendingResolveStepIndex = 0;
+	FTimerHandle PresentationEventTimerHandle;
+	int32 PendingPresentationEventIndex = 0;
 	bool bBoardInputEnabled = true;
 };

@@ -16,8 +16,8 @@ void UVM_OrigamiBirdMatchScreen::Teardown()
 
 	MatchSubsystem = nullptr;
 	CurrentSnapshot = FOrigamiBirdBoardSnapshot();
-	LastMoveResult = FOrigamiBirdMoveResult();
-	bHasSelectedPosition = false;
+	LastActionResult = FOrigamiBirdActionResult();
+	TileSelectionState.Reset();
 	ClearSelectedProp();
 	SetCanInteract(false);
 	SetPropEntries({});
@@ -59,22 +59,22 @@ void UVM_OrigamiBirdMatchScreen::RestartMatch()
 
 bool UVM_OrigamiBirdMatchScreen::SelectOrSwapTile(FIntPoint BoardPosition)
 {
-	LastMoveResult = FOrigamiBirdMoveResult();
+	LastActionResult = FOrigamiBirdActionResult();
 
 	if (!bCanInteract || !ActiveMatch.IsValid())
 	{
 		return false;
 	}
 
-	if (!bHasSelectedPosition)
+	if (!TileSelectionState.bHasSelectedPosition)
 	{
-		bHasSelectedPosition = true;
-		SelectedBoardPosition = BoardPosition;
+		TileSelectionState.bHasSelectedPosition = true;
+		TileSelectionState.SelectedBoardPosition = BoardPosition;
 		ActiveMatch->SelectTile(BoardPosition);
 		return false;
 	}
 
-	if (SelectedBoardPosition == BoardPosition)
+	if (TileSelectionState.SelectedBoardPosition == BoardPosition)
 	{
 		ActiveMatch->SelectTile(BoardPosition);
 		return false;
@@ -82,16 +82,15 @@ bool UVM_OrigamiBirdMatchScreen::SelectOrSwapTile(FIntPoint BoardPosition)
 
 	if (!IsAdjacentToSelected(BoardPosition))
 	{
-		SelectedBoardPosition = BoardPosition;
+		TileSelectionState.SelectedBoardPosition = BoardPosition;
 		ActiveMatch->SelectTile(BoardPosition);
 		return false;
 	}
 
-	const FIntPoint From = SelectedBoardPosition;
-	bHasSelectedPosition = false;
-	SelectedBoardPosition = FIntPoint(INDEX_NONE, INDEX_NONE);
+	const FIntPoint From = TileSelectionState.SelectedBoardPosition;
+	TileSelectionState.Reset();
 
-	const bool bSwapped = ActiveMatch->TrySwapTilesWithResult(From, BoardPosition, LastMoveResult);
+	const bool bSwapped = ActiveMatch->TrySwapTilesWithResult(From, BoardPosition, LastActionResult);
 	SetStatusText(bSwapped
 		? NSLOCTEXT("OrigamiBird", "SwapAccepted", "Matched")
 		: NSLOCTEXT("OrigamiBird", "SwapRejected", "Invalid swap"));
@@ -144,9 +143,9 @@ const FOrigamiBirdBoardSnapshot& UVM_OrigamiBirdMatchScreen::GetCurrentSnapshot(
 	return CurrentSnapshot;
 }
 
-const FOrigamiBirdMoveResult& UVM_OrigamiBirdMatchScreen::GetLastMoveResult() const
+const FOrigamiBirdActionResult& UVM_OrigamiBirdMatchScreen::GetLastActionResult() const
 {
-	return LastMoveResult;
+	return LastActionResult;
 }
 
 const TArray<TObjectPtr<UVM_OrigamiBirdPropEntry>>& UVM_OrigamiBirdMatchScreen::GetPropEntries() const
@@ -168,11 +167,10 @@ void UVM_OrigamiBirdMatchScreen::SelectPropEntry(UVM_OrigamiBirdPropEntry* Entry
 		return;
 	}
 
-	SelectedPropId = Entry->GetPropId();
-	SelectedPropTargetType = Entry->GetTargetType();
-	PendingPropTargetColumns.Reset();
-	bHasSelectedPosition = false;
-	SelectedBoardPosition = FIntPoint(INDEX_NONE, INDEX_NONE);
+	PropTargetSelectionState.SelectedPropId = Entry->GetPropId();
+	PropTargetSelectionState.TargetType = Entry->GetTargetType();
+	PropTargetSelectionState.PendingTargetColumns.Reset();
+	TileSelectionState.Reset();
 
 	SetStatusText(FText::Format(
 		NSLOCTEXT("OrigamiBird", "PropSelectedStatusFormat", "{0}: {1} {2}"),
@@ -183,20 +181,19 @@ void UVM_OrigamiBirdMatchScreen::SelectPropEntry(UVM_OrigamiBirdPropEntry* Entry
 
 void UVM_OrigamiBirdMatchScreen::ClearSelectedProp()
 {
-	SelectedPropId = NAME_None;
-	SelectedPropTargetType = EOrigamiBirdPropTargetType::None;
-	PendingPropTargetColumns.Reset();
+	PropTargetSelectionState.Reset();
 }
 
 bool UVM_OrigamiBirdMatchScreen::HasSelectedProp() const
 {
-	return !SelectedPropId.IsNone();
+	return PropTargetSelectionState.HasSelectedProp();
 }
 
-bool UVM_OrigamiBirdMatchScreen::TryUseSelectedPropOnTile(FIntPoint BoardPosition, FOrigamiBirdPropUseResult& OutResult)
+bool UVM_OrigamiBirdMatchScreen::TryUseSelectedPropOnTile(FIntPoint BoardPosition, FOrigamiBirdActionResult& OutResult)
 {
-	OutResult = FOrigamiBirdPropUseResult();
-	OutResult.PropId = SelectedPropId;
+	OutResult = FOrigamiBirdActionResult();
+	OutResult.ActionType = EOrigamiBirdActionType::UseProp;
+	OutResult.PropId = PropTargetSelectionState.SelectedPropId;
 
 	if (!HasSelectedProp())
 	{
@@ -212,34 +209,34 @@ bool UVM_OrigamiBirdMatchScreen::TryUseSelectedPropOnTile(FIntPoint BoardPositio
 	}
 
 	FOrigamiBirdPropUseRequest Request;
-	Request.PropId = SelectedPropId;
+	Request.PropId = PropTargetSelectionState.SelectedPropId;
 
-	if (SelectedPropTargetType == EOrigamiBirdPropTargetType::SingleTile)
+	if (PropTargetSelectionState.TargetType == EOrigamiBirdPropTargetType::SingleTile)
 	{
 		Request.TargetPositions.Add(BoardPosition);
 	}
-	else if (SelectedPropTargetType == EOrigamiBirdPropTargetType::SingleColumn)
+	else if (PropTargetSelectionState.TargetType == EOrigamiBirdPropTargetType::SingleColumn)
 	{
 		Request.TargetColumns.Add(BoardPosition.X);
 	}
-	else if (SelectedPropTargetType == EOrigamiBirdPropTargetType::TwoColumns)
+	else if (PropTargetSelectionState.TargetType == EOrigamiBirdPropTargetType::TwoColumns)
 	{
-		if (PendingPropTargetColumns.IsEmpty())
+		if (PropTargetSelectionState.PendingTargetColumns.IsEmpty())
 		{
-			PendingPropTargetColumns.Add(BoardPosition.X);
+			PropTargetSelectionState.PendingTargetColumns.Add(BoardPosition.X);
 			SetStatusText(FText::Format(
 				NSLOCTEXT("OrigamiBird", "PropSelectSecondColumnFormat", "First column {0} selected. Choose the second column."),
 				FText::AsNumber(BoardPosition.X + 1)));
 			return false;
 		}
 
-		if (PendingPropTargetColumns[0] == BoardPosition.X)
+		if (PropTargetSelectionState.PendingTargetColumns[0] == BoardPosition.X)
 		{
 			SetStatusText(NSLOCTEXT("OrigamiBird", "PropSelectDifferentColumn", "Choose a different column."));
 			return false;
 		}
 
-		Request.TargetColumns.Add(PendingPropTargetColumns[0]);
+		Request.TargetColumns.Add(PropTargetSelectionState.PendingTargetColumns[0]);
 		Request.TargetColumns.Add(BoardPosition.X);
 	}
 	else
@@ -263,10 +260,11 @@ bool UVM_OrigamiBirdMatchScreen::TryUseSelectedPropOnTile(FIntPoint BoardPositio
 	return false;
 }
 
-bool UVM_OrigamiBirdMatchScreen::TryUseSelectedPropWithoutTarget(FOrigamiBirdPropUseResult& OutResult)
+bool UVM_OrigamiBirdMatchScreen::TryUseSelectedPropWithoutTarget(FOrigamiBirdActionResult& OutResult)
 {
-	OutResult = FOrigamiBirdPropUseResult();
-	OutResult.PropId = SelectedPropId;
+	OutResult = FOrigamiBirdActionResult();
+	OutResult.ActionType = EOrigamiBirdActionType::UseProp;
+	OutResult.PropId = PropTargetSelectionState.SelectedPropId;
 
 	if (!HasSelectedProp())
 	{
@@ -281,14 +279,14 @@ bool UVM_OrigamiBirdMatchScreen::TryUseSelectedPropWithoutTarget(FOrigamiBirdPro
 		return false;
 	}
 
-	if (SelectedPropTargetType != EOrigamiBirdPropTargetType::None)
+	if (PropTargetSelectionState.TargetType != EOrigamiBirdPropTargetType::None)
 	{
 		OutResult.FailureReasonId = TEXT("NeedsTarget");
 		return false;
 	}
 
 	FOrigamiBirdPropUseRequest Request;
-	Request.PropId = SelectedPropId;
+	Request.PropId = PropTargetSelectionState.SelectedPropId;
 
 	const bool bUsed = MatchSubsystem->UsePropOnActiveMatch(Request, OutResult);
 	if (bUsed)
@@ -393,14 +391,14 @@ void UVM_OrigamiBirdMatchScreen::RefreshPropEntries()
 
 bool UVM_OrigamiBirdMatchScreen::IsAdjacentToSelected(FIntPoint BoardPosition) const
 {
-	if (!bHasSelectedPosition)
+	if (!TileSelectionState.bHasSelectedPosition)
 	{
 		return false;
 	}
 
 	const int32 Distance =
-		FMath::Abs(BoardPosition.X - SelectedBoardPosition.X)
-		+ FMath::Abs(BoardPosition.Y - SelectedBoardPosition.Y);
+		FMath::Abs(BoardPosition.X - TileSelectionState.SelectedBoardPosition.X)
+		+ FMath::Abs(BoardPosition.Y - TileSelectionState.SelectedBoardPosition.Y);
 
 	return Distance == 1;
 }

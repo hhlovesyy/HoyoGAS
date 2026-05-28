@@ -1,5 +1,37 @@
 # OrigamiBird Gameplay Refactor Plan
 
+
+
+是的，这一轮已经算是一个比较健康的阶段性重构了，可以停下来读代码了。
+现在这套三消玩法的主线更清楚：
+MatchScreen / VM 负责输入和 UI 状态
+MatchSubsystem 负责读表、开局、发道具、配置校验
+MatchGameObject 负责一局游戏的规则入口和状态推进
+BoardState 负责棋盘数据
+BoardResolver / MatchResolver 负责棋盘生成、匹配、下落、补充、连锁解算
+ResolveCycle 记录玩法事实
+PresentationCompiler 把玩法事实转成表现时间线
+BoardWidget 只播放 ActionResult.PresentationTimeline
+你接下来读代码，我建议按这个顺序：
+1.
+先读 OrigamiBirdMatchTypes.h
+只看核心数据结构：BoardSnapshot、ActionResult、ResolveCycle、PresentationTimeline、道具 Definition。
+2.
+再读 OrigamiBirdMatchGameObject.cpp
+重点看三个入口：Initialize、TrySwapTilesWithResult、UsePropWithResult。
+3.
+再读 OrigamiBirdMatchResolver.cpp
+理解三消连锁如何一轮一轮产出 ResolveCycle。
+4.
+再读 OrigamiBirdResolvePresentationCompiler.cpp
+看 Cycle 怎么变成 Timeline。
+5.
+最后读 VM 和 Widget
+这部分现在应该能明显看出：VM 处理输入状态，Widget 播放表现，不再混玩法解算。
+我认为现在最值得你学习的是：这次重构不是把代码“拆碎”，而是把职责边界拆清楚了。后面如果加新道具，基本应该只扩展 Effect 类和配置表，不需要再大面积动 GameObject / Widget。
+
+
+
 本文档用于记录 OrigamiBird 三消玩法的当前结构、重构边界和分阶段计划。目标是让后续重构始终围绕职责边界推进，避免在实现过程中偏离方向。
 
 ## 1. 重构目标
@@ -650,3 +682,80 @@ struct FOrigamiBirdPresentationEvent
 - 不改变 UI 播放逻辑。
 
 完成 Phase 1 后，再进入 Phase 2 拆 `FOrigamiBirdBoardState`。
+
+## 13. 2026-05-28 Resolve 重构落地记录
+
+本次 Resolve 重构不保留 `ResolveStep` 兼容层，当前代码已经按单路径执行：
+
+```text
+GameObject / BoardResolver
+-> FOrigamiBirdResolveCycle[]
+-> OrigamiBirdResolvePresentationCompiler
+-> FOrigamiBirdPresentationTimeline
+-> BoardWidget timeline playback
+```
+
+当前边界：
+
+- `FOrigamiBirdResolveCycle` 只描述三消连锁事实：匹配、移除、计分、下落、生成、相关快照。
+- `FOrigamiBirdPresentationTimeline` 是 UI 唯一消费对象，`BoardWidget` 不再读取 `ResolveStep`。
+- 普通交换、道具移除、道具生成、交换列这类直接操作会直接追加 `PresentationEvent`，随后如果触发三消连锁，再由 `ResolveCycle` 编译追加后续表现。
+- 不再维护 `FOrigamiBirdResolveStep` / `EOrigamiBirdResolveStepType` 两套结构。
+
+策划配置建议：
+
+- 配置表现节奏，不配置玩法解算顺序。
+- 可开放：`Swap`、`MatchHighlight`、`Remove`、`Score`、`Fall`、`Spawn` 的默认时长。
+- 可开放：某个事件相对上一事件的延迟或重叠，例如 `Score` 和 `Remove` 同时开始，或 `Fall` 在 `Remove` 后延迟 0.05 秒。
+- 不建议开放：匹配扫描顺序、移除和下落的规则顺序、计分是否发生在移除前后。这些属于玩法确定性规则，应留在代码和测试里。
+
+## 14. 2026-05-28 Resolve Resolver 与表现配置落地记录
+
+本次继续拆分后，`GameObject` 不再持有三消连锁 while 主体：
+
+```text
+UOrigamiBirdMatchGameObject
+-> FOrigamiBirdMatchResolver::ResolveCurrentMatches
+-> FOrigamiBirdMatchResolveResult
+-> GameObject 合并分数、ResolveCycles、PresentationTimeline
+```
+
+当前职责边界：
+
+- `FOrigamiBirdMatchResolver` 负责连锁解算：找匹配、生成 `ResolveCycle`、移除、下落、补充、累计本次解算结果。
+- `UOrigamiBirdMatchGameObject` 负责 session 状态：分数、移除总数、MaxCombo、事件广播、MoveResult / PropUseResult 拼装。
+- `FOrigamiBirdBoardResolver` 仍然保持纯棋盘算法：匹配扫描、初始棋盘、下落补充。
+
+表现配置已经进入数据结构：
+
+- `FOrigamiBirdPresentationConfig`
+- `FOrigamiBirdPresentationTimingRule`
+- `FOrigamiBirdMatchStartParams::PresentationConfig`
+- `FOrigamiBirdLevelDefinitionRow::PresentationConfig`
+
+配置字段含义：
+
+- `EventType`：配置哪一种表现事件。
+- `Duration`：事件持续时间，填 0 时使用代码默认值。
+- `OffsetFromPrevious`：相对上一事件的时间偏移。
+- `bStartWithPrevious`：为 true 时以上一事件开始时间为基准；为 false 时以当前 timeline 末尾为基准。
+
+默认不配任何规则时，表现节奏保持代码默认值，和重构前的顺序播放接近。
+
+补充调整：已取消代码里的表现默认时长。关卡表必须配置 `Swap`、`MatchHighlight`、`Remove`、`Score`、`Fall`、`Spawn` 的 `TimingRule`，缺失时玩法初始化失败并输出 Error。Compiler 内部只保留 0.01 秒安全时长，防止错误配置绕过校验后导致 UI 计时器卡住；它不作为正式默认表现使用。
+
+## 15. 2026-05-28 道具配置来源与初始发放调整
+
+道具相关配置收敛：
+
+- `ResolveAfterUse` 只从 `FOrigamiBirdPropDefinitionRow::bResolveAfterUse` 读取。
+- `EffectParams` 不再配置 `ResolveAfterUse`，避免同一个决策有两个来源。
+- `Prop_Explode3x3` 的 `bResolveAfterUse` 改为 true，使用后会进入后续三消解算。
+- `StartMatchByLevelId` 会遍历道具表，把 `InitialCount > 0` 的道具发放给新建的 `ActiveMatch`。
+- `ApplyProp...` 中重复的后续解算模板收敛到 `ResolveAfterPropUse`。
+
+后续仍可继续重构：
+
+- 将道具目标校验抽成统一 helper，减少 Effect 子类重复判断目标数量。
+- 将棋盘修改描述成更通用的 action command，进一步靠近 `FOrigamiBirdActionResult`。
+- 给道具配置加校验：例如 `TargetType` 和 `EffectClass` 是否匹配。

@@ -15,18 +15,20 @@ class HOYOGAS_API UOrigamiBirdPropEffect : public UObject
 	GENERATED_BODY()
 
 public:
+	virtual bool ValidateDefinition(const FOrigamiBirdPropDefinitionRow& Definition, FString& OutError) const;
+
 	// 执行道具效果。通常使用类默认对象 CDO 调用，不要在每次使用道具时反复 new 策略对象。
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "OrigamiBird|Props")
 	bool Execute(
 		UOrigamiBirdMatchGameObject* Match,
 		const FOrigamiBirdPropDefinitionRow& Definition,
 		const FOrigamiBirdPropUseRequest& Request,
-		FOrigamiBirdPropUseResult& OutResult) const;
+		FOrigamiBirdActionResult& OutResult) const;
 	virtual bool Execute_Implementation(
 		UOrigamiBirdMatchGameObject* Match,
 		const FOrigamiBirdPropDefinitionRow& Definition,
 		const FOrigamiBirdPropUseRequest& Request,
-		FOrigamiBirdPropUseResult& OutResult) const;
+		FOrigamiBirdActionResult& OutResult) const;
 
 protected:
 	// 从 EffectParams 里读取原始字符串。找不到时返回 false。

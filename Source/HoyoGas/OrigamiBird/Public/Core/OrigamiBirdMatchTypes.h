@@ -104,7 +104,7 @@ struct HOYOGAS_API FOrigamiBirdPropEffectParam
 {
 	GENERATED_BODY()
 
-	// 参数名。建议使用稳定英文名，例如 TileType、ResolveAfterUse、Count。
+	// 参数名。建议使用稳定英文名，例如 TileType、Count。通用开关不要和 PropDefinition 字段重复配置。
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "OrigamiBird")
 	FName Key = NAME_None;
 
@@ -218,6 +218,46 @@ enum class EOrigamiBirdMatchPhase : uint8
 	GameEnded
 };
 
+UENUM(BlueprintType)
+enum class EOrigamiBirdPresentationEventType : uint8
+{
+	None,
+	Swap,
+	MatchHighlight,
+	Remove,
+	Score,
+	Fall,
+	Spawn,
+	BoardSync
+};
+
+USTRUCT(BlueprintType)
+struct HOYOGAS_API FOrigamiBirdPresentationTimingRule
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "OrigamiBird")
+	EOrigamiBirdPresentationEventType EventType = EOrigamiBirdPresentationEventType::None;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "OrigamiBird", meta = (ClampMin = "0.0"))
+	float Duration = 0.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "OrigamiBird")
+	float OffsetFromPrevious = 0.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "OrigamiBird")
+	bool bStartWithPrevious = false;
+};
+
+USTRUCT(BlueprintType)
+struct HOYOGAS_API FOrigamiBirdPresentationConfig
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "OrigamiBird")
+	TArray<FOrigamiBirdPresentationTimingRule> TimingRules;
+};
+
 //3.一个格子的数据结构，需要保存对应三消东西的类型，位置，ID，是否选中
 USTRUCT(BlueprintType)
 struct HOYOGAS_API FOrigamiBirdTile
@@ -265,6 +305,9 @@ struct HOYOGAS_API FOrigamiBirdMatchStartParams
 	// 本局使用的方块定义。正式项目通常来自 TileDefinition DataTable，这里放进 StartParams 便于测试和复用。
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "OrigamiBird")
 	TArray<FOrigamiBirdTileDefinitionRow> TileDefinitions;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "OrigamiBird")
+	FOrigamiBirdPresentationConfig PresentationConfig;
 };
 
 // 关卡策划表：定义“一局怎么玩”。
@@ -302,6 +345,10 @@ struct HOYOGAS_API FOrigamiBirdLevelDefinitionRow : public FTableRowBase
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "OrigamiBird")
 	TArray<EOrigamiBirdTileType> AvailableTileTypes;
 
+	// 只配置表现节奏，不配置三消玩法解算顺序。
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "OrigamiBird")
+	FOrigamiBirdPresentationConfig PresentationConfig;
+
 	FOrigamiBirdMatchStartParams ToStartParams() const
 	{
 		FOrigamiBirdMatchStartParams Params;
@@ -311,6 +358,7 @@ struct HOYOGAS_API FOrigamiBirdLevelDefinitionRow : public FTableRowBase
 		Params.TargetScore = TargetScore;
 		Params.RandomSeed = RandomSeed;
 		Params.AvailableTileTypes = AvailableTileTypes;
+		Params.PresentationConfig = PresentationConfig;
 		return Params;
 	}
 };
@@ -371,35 +419,6 @@ struct HOYOGAS_API FOrigamiBirdBoardSnapshot
 	EOrigamiBirdMatchPhase Phase = EOrigamiBirdMatchPhase::None;
 };
 
-// 一次交换解算里的表现步骤类型。
-// 逻辑可以瞬间算完，但 UI 动画需要按这些步骤依次播放。
-UENUM(BlueprintType)
-enum class EOrigamiBirdResolveStepType : uint8
-{
-	None,
-
-	// 两个相邻方块交换位置。
-	Swap,
-
-	// 找到一组或多组可消除匹配，通常先播放高亮。
-	Match,
-
-	// 匹配方块被移除，通常播放缩放/淡出。
-	Remove,
-
-	// 老方块从上方掉到下方。
-	Fall,
-
-	// 新方块从棋盘上方或原地生成。
-	Spawn,
-
-	// 分数、连击、步数等数值变化。
-	Score,
-
-	// 动画播完后，用最终 Snapshot 强制校准 UI。
-	FinalSnapshot
-};
-
 // 一个方块从 FromPosition 移动到 ToPosition。
 // Swap 和 Fall 动画都可以用这个结构。
 USTRUCT(BlueprintType)
@@ -420,54 +439,125 @@ struct HOYOGAS_API FOrigamiBirdTileTransition
 	FIntPoint ToPosition = FIntPoint(INDEX_NONE, INDEX_NONE);
 };
 
-// 一次解算中的一个表现步骤。
-// 不同 StepType 会使用不同字段：Swap/Fall 用 TileTransitions，Match/Remove/Spawn 用 AffectedTiles。
+// 一轮三消连锁中的玩法事实。
+// 它描述“这一轮发生了什么”，不描述 UI 应该如何编排动画。
 USTRUCT(BlueprintType)
-struct HOYOGAS_API FOrigamiBirdResolveStep
+struct HOYOGAS_API FOrigamiBirdResolveCycle
 {
 	GENERATED_BODY()
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "OrigamiBird")
-	EOrigamiBirdResolveStepType StepType = EOrigamiBirdResolveStepType::None;
+	int32 ComboIndex = 0;
 
-	// 交换或下落时，记录每个方块从哪里移动到哪里。
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "OrigamiBird")
-	TArray<FOrigamiBirdTileTransition> TileTransitions;
+	TArray<FIntPoint> MatchPositions;
 
-	// 匹配、消除、生成时，记录受影响的方块。
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "OrigamiBird")
-	TArray<FOrigamiBirdTile> AffectedTiles;
+	TArray<FOrigamiBirdTile> MatchedTiles;
 
-	// 有些表现只关心格子位置，比如高亮一组匹配位置。
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "OrigamiBird")
-	TArray<FIntPoint> AffectedPositions;
+	TArray<FOrigamiBirdTile> RemovedTiles;
 
-	// 本步骤增加的分数。只有 Score 步骤通常会填。
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "OrigamiBird")
 	int32 ScoreDelta = 0;
 
-	// 当前连锁序号：第一次消除为 1，二次连锁为 2。
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "OrigamiBird")
-	int32 ComboIndex = 0;
-
-	// 本步骤移除的方块数量。Remove/Score 步骤会用到。
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "OrigamiBird")
 	int32 RemovedTileCount = 0;
 
-	// 这个步骤播放完之后的棋盘快照。第一版可以不填；后面做复杂校准时再用。
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "OrigamiBird")
-	FOrigamiBirdBoardSnapshot SnapshotAfterStep;
+	TArray<FOrigamiBirdTileTransition> FallTransitions;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "OrigamiBird")
+	TArray<FOrigamiBirdTile> SpawnedTiles;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "OrigamiBird")
+	TArray<FIntPoint> SpawnedPositions;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "OrigamiBird")
+	FOrigamiBirdBoardSnapshot SnapshotBeforeRemove;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "OrigamiBird")
+	FOrigamiBirdBoardSnapshot SnapshotAfterScore;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "OrigamiBird")
+	FOrigamiBirdBoardSnapshot SnapshotAfterCollapse;
 };
 
-// 一次玩家移动的完整解算结果。
-// UI 后续会按 ResolveSteps 顺序播放动画，最后用 FinalSnapshot 校准最终显示。
 USTRUCT(BlueprintType)
-struct HOYOGAS_API FOrigamiBirdMoveResult
+struct HOYOGAS_API FOrigamiBirdPresentationEvent
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "OrigamiBird")
+	EOrigamiBirdPresentationEventType EventType = EOrigamiBirdPresentationEventType::None;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "OrigamiBird")
+	float StartTime = 0.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "OrigamiBird")
+	float Duration = 0.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "OrigamiBird")
+	TArray<FOrigamiBirdTileTransition> TileTransitions;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "OrigamiBird")
+	TArray<FOrigamiBirdTile> AffectedTiles;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "OrigamiBird")
+	TArray<FIntPoint> AffectedPositions;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "OrigamiBird")
+	int32 ScoreDelta = 0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "OrigamiBird")
+	int32 ComboIndex = 0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "OrigamiBird")
+	int32 RemovedTileCount = 0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "OrigamiBird")
+	FOrigamiBirdBoardSnapshot SnapshotAfterEvent;
+};
+
+USTRUCT(BlueprintType)
+struct HOYOGAS_API FOrigamiBirdPresentationTimeline
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "OrigamiBird")
+	TArray<FOrigamiBirdPresentationEvent> Events;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "OrigamiBird")
+	FOrigamiBirdBoardSnapshot FinalSnapshot;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "OrigamiBird")
+	float TotalDuration = 0.0f;
+};
+
+UENUM(BlueprintType)
+enum class EOrigamiBirdActionType : uint8
+{
+	None,
+	SwapTiles,
+	UseProp
+};
+
+// 一次玩家动作的完整解算结果。交换和道具都走这一个结果类型。
+// 玩法层输出 ResolveCycles，表现层只消费 PresentationTimeline。
+USTRUCT(BlueprintType)
+struct HOYOGAS_API FOrigamiBirdActionResult
 {
 	GENERATED_BODY()
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "OrigamiBird")
 	bool bAccepted = false;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "OrigamiBird")
+	EOrigamiBirdActionType ActionType = EOrigamiBirdActionType::None;
+
+	// 如果被拒绝，记录原因 ID。比如 NotAdjacent、NoMatch、InvalidPhase、PropNotFound。
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "OrigamiBird")
+	FName FailureReasonId = NAME_None;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "OrigamiBird")
 	FIntPoint From = FIntPoint(INDEX_NONE, INDEX_NONE);
@@ -475,47 +565,6 @@ struct HOYOGAS_API FOrigamiBirdMoveResult
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "OrigamiBird")
 	FIntPoint To = FIntPoint(INDEX_NONE, INDEX_NONE);
 
-	// 如果被拒绝，记录原因 ID。比如 NotAdjacent、NoMatch、InvalidPhase。
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "OrigamiBird")
-	FName FailureReasonId = NAME_None;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "OrigamiBird")
-	FOrigamiBirdBoardSnapshot InitialSnapshot;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "OrigamiBird")
-	FOrigamiBirdBoardSnapshot FinalSnapshot;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "OrigamiBird")
-	TArray<FOrigamiBirdResolveStep> ResolveSteps;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "OrigamiBird")
-	int32 TotalScoreDelta = 0;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "OrigamiBird")
-	int32 UsedMoveDelta = 0;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "OrigamiBird")
-	int32 MaxCombo = 0;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "OrigamiBird")
-	int32 RemovedTileCount = 0;
-};
-
-// 一次道具使用的完整结果。
-// 结构和 MoveResult 相似：玩法逻辑先瞬间算完，UI 再按 ResolveSteps 播放表现。
-USTRUCT(BlueprintType)
-struct HOYOGAS_API FOrigamiBirdPropUseResult
-{
-	GENERATED_BODY()
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "OrigamiBird")
-	bool bAccepted = false;
-
-	// 失败原因 ID。比如 PropNotFound、NotEnoughTarget、InvalidColumn。
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "OrigamiBird")
-	FName FailureReasonId = NAME_None;
-
-	// 使用的道具 ID，方便 UI/日志/事件系统知道是哪一个道具触发。
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "OrigamiBird")
 	FName PropId = NAME_None;
 
@@ -526,10 +575,19 @@ struct HOYOGAS_API FOrigamiBirdPropUseResult
 	FOrigamiBirdBoardSnapshot FinalSnapshot;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "OrigamiBird")
-	TArray<FOrigamiBirdResolveStep> ResolveSteps;
+	TArray<FOrigamiBirdResolveCycle> ResolveCycles;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "OrigamiBird")
+	FOrigamiBirdPresentationTimeline PresentationTimeline;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "OrigamiBird")
 	int32 TotalScoreDelta = 0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "OrigamiBird")
+	int32 UsedMoveDelta = 0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "OrigamiBird")
+	int32 MaxCombo = 0;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "OrigamiBird")
 	int32 RemovedTileCount = 0;

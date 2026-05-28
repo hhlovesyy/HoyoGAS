@@ -9,6 +9,43 @@ class UOrigamiBirdMatchGameObject;
 class UOrigamiBirdMatchSubsystem;
 class UVM_OrigamiBirdPropEntry;
 
+USTRUCT()
+struct FOrigamiBirdTileSelectionState
+{
+	GENERATED_BODY()
+
+	FIntPoint SelectedBoardPosition = FIntPoint(INDEX_NONE, INDEX_NONE);
+	bool bHasSelectedPosition = false;
+
+	void Reset()
+	{
+		SelectedBoardPosition = FIntPoint(INDEX_NONE, INDEX_NONE);
+		bHasSelectedPosition = false;
+	}
+};
+
+USTRUCT()
+struct FOrigamiBirdPropTargetSelectionState
+{
+	GENERATED_BODY()
+
+	FName SelectedPropId = NAME_None;
+	EOrigamiBirdPropTargetType TargetType = EOrigamiBirdPropTargetType::None;
+	TArray<int32> PendingTargetColumns;
+
+	void Reset()
+	{
+		SelectedPropId = NAME_None;
+		TargetType = EOrigamiBirdPropTargetType::None;
+		PendingTargetColumns.Reset();
+	}
+
+	bool HasSelectedProp() const
+	{
+		return !SelectedPropId.IsNone();
+	}
+};
+
 // 折纸小鸟对对碰主界面的 ViewModel。
 // 棋盘本体由 GameObject 负责，VM 只把分数、步数、道具列表等状态整理给 UI。
 UCLASS(BlueprintType)
@@ -42,7 +79,7 @@ public:
 	void SetCanInteract(bool bInValue);
 
 	const FOrigamiBirdBoardSnapshot& GetCurrentSnapshot() const;
-	const FOrigamiBirdMoveResult& GetLastMoveResult() const;
+	const FOrigamiBirdActionResult& GetLastActionResult() const;
 
 	const TArray<TObjectPtr<UVM_OrigamiBirdPropEntry>>& GetPropEntries() const;
 	void SetPropEntries(const TArray<TObjectPtr<UVM_OrigamiBirdPropEntry>>& InEntries);
@@ -50,8 +87,8 @@ public:
 	void SelectPropEntry(UVM_OrigamiBirdPropEntry* Entry);
 	void ClearSelectedProp();
 	bool HasSelectedProp() const;
-	bool TryUseSelectedPropOnTile(FIntPoint BoardPosition, FOrigamiBirdPropUseResult& OutResult);
-	bool TryUseSelectedPropWithoutTarget(FOrigamiBirdPropUseResult& OutResult);
+	bool TryUseSelectedPropOnTile(FIntPoint BoardPosition, FOrigamiBirdActionResult& OutResult);
+	bool TryUseSelectedPropWithoutTarget(FOrigamiBirdActionResult& OutResult);
 
 private:
 	UFUNCTION()
@@ -84,11 +121,7 @@ private:
 	TWeakObjectPtr<UOrigamiBirdMatchSubsystem> MatchSubsystem;
 	TWeakObjectPtr<UOrigamiBirdMatchGameObject> ActiveMatch;
 	FOrigamiBirdBoardSnapshot CurrentSnapshot;
-	FOrigamiBirdMoveResult LastMoveResult;
-
-	FName SelectedPropId = NAME_None;
-	EOrigamiBirdPropTargetType SelectedPropTargetType = EOrigamiBirdPropTargetType::None;
-	TArray<int32> PendingPropTargetColumns;
-	FIntPoint SelectedBoardPosition = FIntPoint(INDEX_NONE, INDEX_NONE);
-	bool bHasSelectedPosition = false;
+	FOrigamiBirdActionResult LastActionResult;
+	FOrigamiBirdTileSelectionState TileSelectionState;
+	FOrigamiBirdPropTargetSelectionState PropTargetSelectionState;
 };

@@ -1,10 +1,50 @@
 #include "Subsystems/OrigamiBirdMatchSubsystem.h"
 
 #include "Core/OrigamiBirdMatchGameObject.h"
+#include "Core/OrigamiBirdPropEffect.h"
 #include "Engine/DataTable.h"
 #include "OrigamiBirdSettings.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogOrigamiBirdMatchSubsystem, Log, All);
+
+namespace
+{
+	bool ValidatePropDefinition(FName PropId, const FOrigamiBirdPropDefinitionRow& Definition, FString& OutError)
+	{
+		if (!Definition.EffectClass)
+		{
+			OutError = TEXT("EffectClass is not configured");
+			return false;
+		}
+
+		if (Definition.InitialCount < 0)
+		{
+			OutError = TEXT("InitialCount must not be negative");
+			return false;
+		}
+
+		if (Definition.MaxStackCount < 1)
+		{
+			OutError = TEXT("MaxStackCount must be at least 1");
+			return false;
+		}
+
+		const UOrigamiBirdPropEffect* Effect = Definition.EffectClass->GetDefaultObject<UOrigamiBirdPropEffect>();
+		if (!Effect)
+		{
+			OutError = TEXT("EffectClass is not a valid OrigamiBirdPropEffect");
+			return false;
+		}
+
+		if (!Effect->ValidateDefinition(Definition, OutError))
+		{
+			OutError = FString::Printf(TEXT("%s. PropId=%s"), *OutError, *PropId.ToString());
+			return false;
+		}
+
+		return true;
+	}
+}
 
 void UOrigamiBirdMatchSubsystem::Deinitialize()
 {
@@ -46,16 +86,39 @@ UOrigamiBirdMatchGameObject* UOrigamiBirdMatchSubsystem::StartMatchByLevelId(FNa
 	ActiveMatch = NewObject<UOrigamiBirdMatchGameObject>(this);
 	ActiveMatch->InitializeFromLevelDefinition(LevelDefinition, TileDefinitions);
 
+	TArray<FName> PropIds;
+	GetAllPropIds(PropIds);
+	for (const FName& PropId : PropIds)
+	{
+		FOrigamiBirdPropDefinitionRow PropDefinition;
+		if (!FindPropDefinition(PropId, PropDefinition))
+		{
+			continue;
+		}
+
+		if (PropDefinition.InitialCount <= 0)
+		{
+			continue;
+		}
+
+		ActiveMatch->GrantProp(
+			PropId,
+			PropDefinition.InitialCount,
+			PropDefinition.bStackable,
+			PropDefinition.MaxStackCount);
+	}
+
 	UE_LOG(
 		LogOrigamiBirdMatchSubsystem,
 		Log,
-		TEXT("Started OrigamiBird match LevelId=%s Board=%dx%d Moves=%d TargetScore=%d TileDefinitions=%d"),
+		TEXT("Started OrigamiBird match LevelId=%s Board=%dx%d Moves=%d TargetScore=%d TileDefinitions=%d PropDefinitions=%d"),
 		*LevelId.ToString(),
 		LevelDefinition.BoardWidth,
 		LevelDefinition.BoardHeight,
 		LevelDefinition.MoveLimit,
 		LevelDefinition.TargetScore,
-		TileDefinitions.Num()
+		TileDefinitions.Num(),
+		PropIds.Num()
 	);
 
 	return ActiveMatch;
@@ -166,6 +229,28 @@ bool UOrigamiBirdMatchSubsystem::FindPropDefinition(FName PropId, FOrigamiBirdPr
 	const FString ContextString = TEXT("OrigamiBirdMatchSubsystem.FindPropDefinition");
 	if (const FOrigamiBirdPropDefinitionRow* Row = PropTable->FindRow<FOrigamiBirdPropDefinitionRow>(PropId, ContextString))
 	{
+		FString ValidationError;
+		if (!ValidatePropDefinition(PropId, *Row, ValidationError))
+		{
+			UE_LOG(
+				LogOrigamiBirdMatchSubsystem,
+				Error,
+				TEXT("Prop definition '%s' is invalid: %s"),
+				*PropId.ToString(),
+				*ValidationError);
+			return false;
+		}
+
+		if (!Row->bStackable && Row->MaxStackCount != 1)
+		{
+			UE_LOG(
+				LogOrigamiBirdMatchSubsystem,
+				Warning,
+				TEXT("Prop definition '%s' is not stackable, MaxStackCount=%d will be treated as 1."),
+				*PropId.ToString(),
+				Row->MaxStackCount);
+		}
+
 		OutDefinition = *Row;
 		return true;
 	}
@@ -239,9 +324,10 @@ bool UOrigamiBirdMatchSubsystem::ConsumePropFromActiveMatch(FName PropId, int32 
 	return ActiveMatch->ConsumeProp(PropId, Count);
 }
 
-bool UOrigamiBirdMatchSubsystem::UsePropOnActiveMatch(const FOrigamiBirdPropUseRequest& Request, FOrigamiBirdPropUseResult& OutResult)
+bool UOrigamiBirdMatchSubsystem::UsePropOnActiveMatch(const FOrigamiBirdPropUseRequest& Request, FOrigamiBirdActionResult& OutResult)
 {
-	OutResult = FOrigamiBirdPropUseResult();
+	OutResult = FOrigamiBirdActionResult();
+	OutResult.ActionType = EOrigamiBirdActionType::UseProp;
 	OutResult.PropId = Request.PropId;
 
 	if (!ActiveMatch)

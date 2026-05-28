@@ -7,9 +7,7 @@
     "PropType": "RemoveSingleTile",
     "TargetType": "SingleTile",
     "EffectClass": "/Script/HoyoGas.OrigamiBirdRemoveSingleTilePropEffect",
-    "EffectParams": [
-      { "Key": "ResolveAfterUse", "Value": "true" }
-    ],
+    "EffectParams": [],
     "InitialCount": 3,
     "bStackable": true,
     "MaxStackCount": 99,
@@ -24,9 +22,7 @@
     "PropType": "ReplaceTileType",
     "TargetType": "SingleTile",
     "EffectClass": "/Script/HoyoGas.OrigamiBirdRandomReplaceTilePropEffect",
-    "EffectParams": [
-      { "Key": "ResolveAfterUse", "Value": "true" }
-    ],
+    "EffectParams": [],
     "InitialCount": 3,
     "bStackable": true,
     "MaxStackCount": 99,
@@ -41,9 +37,7 @@
     "PropType": "SwapColumns",
     "TargetType": "TwoColumns",
     "EffectClass": "/Script/HoyoGas.OrigamiBirdSwapColumnsPropEffect",
-    "EffectParams": [
-      { "Key": "ResolveAfterUse", "Value": "true" }
-    ],
+    "EffectParams": [],
     "InitialCount": 1,
     "bStackable": true,
     "MaxStackCount": 99,
@@ -58,9 +52,7 @@
     "PropType": "CopyColumn",
     "TargetType": "SingleColumn",
     "EffectClass": "/Script/HoyoGas.OrigamiBirdCopyColumnToNeighborPropEffect",
-    "EffectParams": [
-      { "Key": "ResolveAfterUse", "Value": "true" }
-    ],
+    "EffectParams": [],
     "InitialCount": 1,
     "bStackable": true,
     "MaxStackCount": 99,
@@ -75,9 +67,7 @@
     "PropType": "None",
     "TargetType": "None",
     "EffectClass": "/Script/HoyoGas.OrigamiBirdShuffleBoardPropEffect",
-    "EffectParams": [
-      { "Key": "ResolveAfterUse", "Value": "true" }
-    ],
+    "EffectParams": [],
     "InitialCount": 1,
     "bStackable": true,
     "MaxStackCount": 99,
@@ -87,18 +77,16 @@
   {
     "Name": "Prop_Explode3x3",
     "DisplayName": "3x3 Bomb",
-    "Description": "Select one tile and remove the 3x3 area around it. This direct removal gives no score.",
+    "Description": "Select one tile and remove the 3x3 area around it.",
     "Icon": "",
     "PropType": "RemoveSingleTile",
     "TargetType": "SingleTile",
     "EffectClass": "/Script/HoyoGas.OrigamiBirdExplode3x3PropEffect",
-    "EffectParams": [
-      { "Key": "ResolveAfterUse", "Value": "false" }
-    ],
+    "EffectParams": [],
     "InitialCount": 1,
     "bStackable": true,
     "MaxStackCount": 99,
-    "bResolveAfterUse": false,
+    "bResolveAfterUse": true,
     "ReplacementTileType": "None"
   }
 ]

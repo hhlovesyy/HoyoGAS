@@ -1,15 +1,23 @@
 #include "Core/OrigamiBirdPropEffect.h"
 
+bool UOrigamiBirdPropEffect::ValidateDefinition(const FOrigamiBirdPropDefinitionRow& Definition, FString& OutError) const
+{
+	(void)Definition;
+	(void)OutError;
+	return true;
+}
+
 bool UOrigamiBirdPropEffect::Execute_Implementation(
 	UOrigamiBirdMatchGameObject* Match,
 	const FOrigamiBirdPropDefinitionRow& Definition,
 	const FOrigamiBirdPropUseRequest& Request,
-	FOrigamiBirdPropUseResult& OutResult) const
+	FOrigamiBirdActionResult& OutResult) const
 {
 	(void)Match;
 	(void)Definition;
 
-	OutResult = FOrigamiBirdPropUseResult();
+	OutResult = FOrigamiBirdActionResult();
+	OutResult.ActionType = EOrigamiBirdActionType::UseProp;
 	OutResult.PropId = Request.PropId;
 	OutResult.FailureReasonId = TEXT("EffectNotImplemented");
 	return false;
