@@ -1,6 +1,7 @@
 #include "Core/OrigamiBirdBoardEditPropEffects.h"
 
 #include "Core/OrigamiBirdMatchGameObject.h"
+#include "Core/OrigamiBirdPropActionExecutor.h"
 
 namespace
 {
@@ -40,7 +41,7 @@ bool UOrigamiBirdRandomReplaceTilePropEffect::Execute_Implementation(UOrigamiBir
 		return false;
 	}
 
-	return Match->ApplyPropRandomReplaceTile(Request.TargetPositions[0], Definition.bResolveAfterUse, OutResult);
+	return FOrigamiBirdPropActionExecutor::RandomReplaceTile(*Match, Request.TargetPositions[0], Definition.bResolveAfterUse, OutResult);
 }
 
 bool UOrigamiBirdSwapColumnsPropEffect::ValidateDefinition(const FOrigamiBirdPropDefinitionRow& Definition, FString& OutError) const
@@ -61,7 +62,7 @@ bool UOrigamiBirdSwapColumnsPropEffect::Execute_Implementation(UOrigamiBirdMatch
 		return false;
 	}
 
-	return Match->ApplyPropSwapColumns(Request.TargetColumns[0], Request.TargetColumns[1], Definition.bResolveAfterUse, OutResult);
+	return FOrigamiBirdPropActionExecutor::SwapColumns(*Match, Request.TargetColumns[0], Request.TargetColumns[1], Definition.bResolveAfterUse, OutResult);
 }
 
 bool UOrigamiBirdCopyColumnToNeighborPropEffect::ValidateDefinition(const FOrigamiBirdPropDefinitionRow& Definition, FString& OutError) const
@@ -82,7 +83,7 @@ bool UOrigamiBirdCopyColumnToNeighborPropEffect::Execute_Implementation(UOrigami
 		return false;
 	}
 
-	return Match->ApplyPropCopyColumnToNeighbor(Request.TargetColumns[0], Definition.bResolveAfterUse, OutResult);
+	return FOrigamiBirdPropActionExecutor::CopyColumnToNeighbor(*Match, Request.TargetColumns[0], Definition.bResolveAfterUse, OutResult);
 }
 
 bool UOrigamiBirdShuffleBoardPropEffect::ValidateDefinition(const FOrigamiBirdPropDefinitionRow& Definition, FString& OutError) const
@@ -100,7 +101,7 @@ bool UOrigamiBirdShuffleBoardPropEffect::Execute_Implementation(UOrigamiBirdMatc
 		return false;
 	}
 
-	return Match->ApplyPropShuffleBoard(Definition.bResolveAfterUse, OutResult);
+	return FOrigamiBirdPropActionExecutor::ShuffleBoard(*Match, Definition.bResolveAfterUse, OutResult);
 }
 
 bool UOrigamiBirdExplode3x3PropEffect::ValidateDefinition(const FOrigamiBirdPropDefinitionRow& Definition, FString& OutError) const
@@ -121,5 +122,5 @@ bool UOrigamiBirdExplode3x3PropEffect::Execute_Implementation(UOrigamiBirdMatchG
 		return false;
 	}
 
-	return Match->ApplyPropExplode3x3(Request.TargetPositions[0], Definition.bResolveAfterUse, OutResult);
+	return FOrigamiBirdPropActionExecutor::Explode3x3(*Match, Request.TargetPositions[0], Definition.bResolveAfterUse, OutResult);
 }

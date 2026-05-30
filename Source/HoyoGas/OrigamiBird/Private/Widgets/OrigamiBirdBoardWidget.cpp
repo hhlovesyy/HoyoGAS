@@ -4,45 +4,32 @@
 #include "Blueprint/WidgetTree.h"
 #include "Components/UniformGridPanel.h"
 #include "Components/UniformGridSlot.h"
+#include "Core/OrigamiBirdActionPresentationBuilder.h"
 #include "Engine/Texture2D.h"
 #include "Subsystems/OrigamiBirdMatchSubsystem.h"
 #include "TimerManager.h"
-#include "UObject/UObjectIterator.h"
 #include "Widgets/OrigamiBirdTileVisualWidget.h"
+
+DEFINE_LOG_CATEGORY_STATIC(LogOrigamiBirdBoardWidget, Log, All);
 
 namespace
 {
 	constexpr float DefaultEventDuration = 0.01f;
 	constexpr float EventStartTimeTolerance = 0.001f;
-
-	UClass* FindDefaultTileVisualWidgetClass()
-	{
-		static const FString ExpectedClassName = TEXT("WBP_OrigamiBirdTileVisualWidget_C");
-
-		for (TObjectIterator<UClass> ClassIt; ClassIt; ++ClassIt)
-		{
-			UClass* CandidateClass = *ClassIt;
-			if (CandidateClass
-				&& CandidateClass->IsChildOf(UOrigamiBirdTileVisualWidget::StaticClass())
-				&& CandidateClass->GetName().Equals(ExpectedClassName, ESearchCase::IgnoreCase))
-			{
-				return CandidateClass;
-			}
-		}
-
-		return UOrigamiBirdTileVisualWidget::StaticClass();
-	}
 }
 
 void UOrigamiBirdBoardWidget::NativeOnInitialized()
 {
 	Super::NativeOnInitialized();
 
-	EnsureDefaultBoardTree();
-
 	if (!TileVisualWidgetClass)
 	{
-		TileVisualWidgetClass = FindDefaultTileVisualWidgetClass();
+		UE_LOG(LogOrigamiBirdBoardWidget, Error, TEXT("BoardWidget requires TileVisualWidgetClass to be configured."));
+	}
+
+	if (!BoardGrid)
+	{
+		UE_LOG(LogOrigamiBirdBoardWidget, Error, TEXT("BoardWidget requires BoardGrid to be bound in the widget blueprint."));
 	}
 }
 
@@ -73,7 +60,14 @@ void UOrigamiBirdBoardWidget::BuildFromSnapshot(const FOrigamiBirdBoardSnapshot&
 
 void UOrigamiBirdBoardWidget::PlayActionResult(const FOrigamiBirdActionResult& ActionResult)
 {
-	PlayPresentationTimeline(ActionResult.PresentationTimeline, ActionResult.InitialSnapshot);
+	FOrigamiBirdPresentationTimeline Timeline = ActionResult.PresentationTimeline;
+	if (Timeline.Events.IsEmpty()
+		&& (!ActionResult.BoardChangeSteps.IsEmpty() || !ActionResult.ResolveCycles.IsEmpty()))
+	{
+		Timeline = FOrigamiBirdActionPresentationBuilder::BuildTimeline(ActionResult, ActionResult.PresentationConfig);
+	}
+
+	PlayPresentationTimeline(Timeline, ActionResult.InitialSnapshot);
 }
 
 void UOrigamiBirdBoardWidget::PlayPresentationTimeline(
@@ -150,17 +144,6 @@ void UOrigamiBirdBoardWidget::HandlePresentationEventDelayFinished()
 	PlayNextPresentationEvent();
 }
 
-void UOrigamiBirdBoardWidget::EnsureDefaultBoardTree()
-{
-	if (!WidgetTree || WidgetTree->RootWidget)
-	{
-		return;
-	}
-
-	BoardGrid = WidgetTree->ConstructWidget<UUniformGridPanel>(UUniformGridPanel::StaticClass(), TEXT("GeneratedBoardGrid"));
-	WidgetTree->RootWidget = BoardGrid;
-}
-
 void UOrigamiBirdBoardWidget::RebuildPositionMap()
 {
 	TileIdByPosition.Reset();
@@ -178,6 +161,9 @@ void UOrigamiBirdBoardWidget::ReconcileWithSnapshot(const FOrigamiBirdBoardSnaps
 {
 	if (!BoardGrid || !WidgetTree)
 	{
+		UE_LOG(LogOrigamiBirdBoardWidget, Error, TEXT("Cannot build board visuals because BoardGrid or WidgetTree is missing. BoardGrid=%s WidgetTree=%s"),
+			BoardGrid ? TEXT("valid") : TEXT("null"),
+			WidgetTree ? TEXT("valid") : TEXT("null"));
 		return;
 	}
 
@@ -377,12 +363,19 @@ UOrigamiBirdTileVisualWidget* UOrigamiBirdBoardWidget::CreateTileVisual(const FO
 	UClass* TileClass = TileVisualWidgetClass.Get();
 	if (!TileClass)
 	{
-		TileClass = UOrigamiBirdTileVisualWidget::StaticClass();
+		UE_LOG(LogOrigamiBirdBoardWidget, Error, TEXT("Cannot create tile visual for tile id %d at (%d,%d): TileVisualWidgetClass is not configured."),
+			Tile.TileId,
+			Tile.BoardPosition.X,
+			Tile.BoardPosition.Y);
+		return nullptr;
 	}
 
 	UOrigamiBirdTileVisualWidget* TileVisual = WidgetTree->ConstructWidget<UOrigamiBirdTileVisualWidget>(TileClass);
 	if (!TileVisual)
 	{
+		UE_LOG(LogOrigamiBirdBoardWidget, Error, TEXT("Cannot create tile visual for tile id %d using class '%s'. The class must inherit from OrigamiBirdTileVisualWidget."),
+			Tile.TileId,
+			*GetNameSafe(TileClass));
 		return nullptr;
 	}
 

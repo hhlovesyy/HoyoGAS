@@ -114,6 +114,7 @@ namespace JsonWidgetBlueprintImporter
 		FString FontObjectPath;
 		FString RichTextStyleSet;
 		TWeakObjectPtr<UDataTable> GeneratedRichTextStyleSet;
+		TMap<FString, FString> ClassDefaults;
 	};
 
 	struct FImportedSchema
@@ -521,6 +522,23 @@ namespace JsonWidgetBlueprintImporter
 		{
 			DefaultsObject->TryGetStringField(TEXT("fontObject"), OutSchema.Defaults.FontObjectPath);
 			DefaultsObject->TryGetStringField(TEXT("richTextStyleSet"), OutSchema.Defaults.RichTextStyleSet);
+
+			TSharedPtr<FJsonObject> ClassDefaultsObject;
+			if (TryGetObjectField(DefaultsObject, TEXT("classDefaults"), ClassDefaultsObject))
+			{
+				for (const TPair<FString, TSharedPtr<FJsonValue>>& Pair : ClassDefaultsObject->Values)
+				{
+					FString ClassPath;
+					if (Pair.Value.IsValid() && Pair.Value->TryGetString(ClassPath) && !ClassPath.IsEmpty())
+					{
+						OutSchema.Defaults.ClassDefaults.Add(Pair.Key, ClassPath);
+					}
+					else
+					{
+						AddWarning(Result, FString::Printf(TEXT("Skipping defaults.classDefaults.%s because it is not a string."), *Pair.Key));
+					}
+				}
+			}
 		}
 
 		if (!RootObject->TryGetStringField(TEXT("widgetBlueprintName"), OutSchema.WidgetBlueprintName) || OutSchema.WidgetBlueprintName.IsEmpty())
@@ -817,6 +835,95 @@ namespace JsonWidgetBlueprintImporter
 		ListViewBase->Modify();
 		EntryWidgetClassProperty->SetObjectPropertyValue_InContainer(ListViewBase, EntryClass);
 		return true;
+	}
+
+	static UClass* ResolveClassReference(const FString& ClassText, UClass* RequiredBaseClass)
+	{
+		if (ClassText.IsEmpty())
+		{
+			return nullptr;
+		}
+
+		if (UClass* LoadedClass = FindObject<UClass>(nullptr, *ClassText))
+		{
+			if (!RequiredBaseClass || LoadedClass->IsChildOf(RequiredBaseClass))
+			{
+				return LoadedClass;
+			}
+		}
+
+		if (UClass* LoadedClass = LoadClass<UObject>(nullptr, *ClassText))
+		{
+			if (!RequiredBaseClass || LoadedClass->IsChildOf(RequiredBaseClass))
+			{
+				return LoadedClass;
+			}
+		}
+
+		const FString TrimmedName = ClassText.TrimStartAndEnd();
+		const FString ExpectedRawName = TrimmedName.StartsWith(TEXT("U")) ? TrimmedName : FString(TEXT("U")) + TrimmedName;
+		const FString ExpectedGeneratedName = TrimmedName.EndsWith(TEXT("_C")) ? TrimmedName : TrimmedName + TEXT("_C");
+		for (TObjectIterator<UClass> It; It; ++It)
+		{
+			UClass* Class = *It;
+			if (Class == nullptr)
+			{
+				continue;
+			}
+
+			if (RequiredBaseClass && !Class->IsChildOf(RequiredBaseClass))
+			{
+				continue;
+			}
+
+			if (Class->GetName().Equals(TrimmedName)
+				|| Class->GetName().Equals(ExpectedRawName)
+				|| Class->GetName().Equals(ExpectedGeneratedName)
+				|| Class->GetAuthoredName().Equals(TrimmedName))
+			{
+				return Class;
+			}
+		}
+
+		return nullptr;
+	}
+
+	static void ApplyClassDefaults(UWidgetBlueprint* WidgetBlueprint, const FImportedSchemaDefaults& Defaults, FJsonWidgetBlueprintImportResult& Result)
+	{
+		if (WidgetBlueprint == nullptr || WidgetBlueprint->GeneratedClass == nullptr || Defaults.ClassDefaults.IsEmpty())
+		{
+			return;
+		}
+
+		UObject* ClassDefaultObject = WidgetBlueprint->GeneratedClass->GetDefaultObject();
+		if (ClassDefaultObject == nullptr)
+		{
+			AddWarning(Result, FString::Printf(TEXT("Could not apply class defaults for '%s' because it has no CDO."), *WidgetBlueprint->GetName()));
+			return;
+		}
+
+		ClassDefaultObject->Modify();
+		for (const TPair<FString, FString>& Pair : Defaults.ClassDefaults)
+		{
+			FProperty* Property = FindFProperty<FProperty>(ClassDefaultObject->GetClass(), *Pair.Key);
+			FClassProperty* ClassProperty = CastField<FClassProperty>(Property);
+			if (ClassProperty == nullptr)
+			{
+				AddWarning(Result, FString::Printf(TEXT("defaults.classDefaults.%s is not a class property on '%s'."), *Pair.Key, *WidgetBlueprint->GetName()));
+				continue;
+			}
+
+			UClass* ResolvedClass = ResolveClassReference(Pair.Value, ClassProperty->MetaClass);
+			if (ResolvedClass == nullptr)
+			{
+				AddWarning(Result, FString::Printf(TEXT("Could not resolve class default '%s' for property '%s'."), *Pair.Value, *Pair.Key));
+				continue;
+			}
+
+			ClassProperty->SetObjectPropertyValue_InContainer(ClassDefaultObject, ResolvedClass);
+		}
+
+		WidgetBlueprint->MarkPackageDirty();
 	}
 
 	static UClass* CreateEntryWidgetBlueprint(UWidgetBlueprint* OwnerBlueprint, UListViewBase* ListViewBase, UClass* EntryParentClass, const FString& NodePath, FJsonWidgetBlueprintImportResult& Result)
@@ -2145,6 +2252,62 @@ namespace JsonWidgetBlueprintImporter
 		}
 	}
 
+	static void ClearMVVMBindings(UWidgetBlueprint* WidgetBlueprint, FJsonWidgetBlueprintImportResult& Result)
+	{
+		if (WidgetBlueprint == nullptr || GEditor == nullptr)
+		{
+			return;
+		}
+
+		UMVVMEditorSubsystem* MVVMEditorSubsystem = GEditor->GetEditorSubsystem<UMVVMEditorSubsystem>();
+		UMVVMBlueprintView* BlueprintView = MVVMEditorSubsystem ? MVVMEditorSubsystem->RequestView(WidgetBlueprint) : nullptr;
+		if (MVVMEditorSubsystem == nullptr || BlueprintView == nullptr)
+		{
+			AddWarning(Result, TEXT("MVVM editor subsystem is unavailable; existing MVVM bindings were not cleared."));
+			return;
+		}
+
+		BlueprintView->Modify();
+		for (int32 BindingIndex = BlueprintView->GetNumBindings() - 1; BindingIndex >= 0; --BindingIndex)
+		{
+			BlueprintView->RemoveBindingAt(BindingIndex);
+		}
+	}
+
+	static void ClearWidgetTreeForImport(UWidgetBlueprint* WidgetBlueprint)
+	{
+		if (WidgetBlueprint == nullptr || WidgetBlueprint->WidgetTree == nullptr)
+		{
+			return;
+		}
+
+		UWidgetTree* WidgetTree = WidgetBlueprint->WidgetTree;
+		WidgetTree->Modify();
+
+		TArray<UWidget*> ExistingWidgets;
+		WidgetTree->GetAllWidgets(ExistingWidgets);
+		WidgetTree->RootWidget = nullptr;
+		WidgetTree->NamedSlotBindings.Reset();
+
+		for (UWidget* ExistingWidget : ExistingWidgets)
+		{
+			if (ExistingWidget == nullptr || ExistingWidget->GetOuter() != WidgetTree)
+			{
+				continue;
+			}
+
+			ExistingWidget->Modify();
+			const FName ArchivedName = MakeUniqueObjectName(
+				GetTransientPackage(),
+				ExistingWidget->GetClass(),
+				FName(*(ExistingWidget->GetName() + TEXT("_Old"))));
+			ExistingWidget->Rename(
+				*ArchivedName.ToString(),
+				GetTransientPackage(),
+				REN_DontCreateRedirectors | REN_NonTransactional);
+		}
+	}
+
 	static void ApplyMVVMBindings(UWidgetBlueprint* WidgetBlueprint, const TArray<FImportedMVVMBindingDefinition>& BindingDefinitions, const TMap<FString, FGuid>& ViewModelIdsByName, FJsonWidgetBlueprintImportResult& Result)
 	{
 		if (WidgetBlueprint == nullptr || GEditor == nullptr || BindingDefinitions.IsEmpty())
@@ -2216,6 +2379,8 @@ namespace JsonWidgetBlueprintImporter
 			MVVMEditorSubsystem->SetEnabledForBinding(WidgetBlueprint, NewBinding, true);
 			MVVMEditorSubsystem->SetCompileForBinding(WidgetBlueprint, NewBinding, true);
 		}
+
+		WidgetBlueprint->MarkPackageDirty();
 	}
 
 	static UPanelSlot* AttachWidgetToParent(UWidget* ParentWidget, UWidget* ChildWidget, const FString& ParentPath, FJsonWidgetBlueprintImportResult& Result)
@@ -2422,19 +2587,43 @@ FJsonWidgetBlueprintImportResult FJsonWidgetBlueprintImporter::ImportFromFile(co
 
 	const FString AssetName = SanitizeName(Schema.WidgetBlueprintName);
 	const FString PackageName = TargetContentFolder / AssetName;
+	UWidgetBlueprint* WidgetBlueprint = nullptr;
 	if (FPackageName::DoesPackageExist(PackageName))
 	{
-		AddError(Result, FString::Printf(TEXT("Asset '%s' already exists."), *PackageName));
-		return Result;
+		if (!Request.bOverwriteExistingAsset)
+		{
+			AddError(Result, FString::Printf(TEXT("Asset '%s' already exists."), *PackageName));
+			return Result;
+		}
+
+		WidgetBlueprint = LoadObject<UWidgetBlueprint>(nullptr, *FString::Printf(TEXT("%s.%s"), *PackageName, *AssetName));
+		if (WidgetBlueprint == nullptr)
+		{
+			AddError(Result, FString::Printf(TEXT("Asset '%s' already exists but is not a Widget Blueprint."), *PackageName));
+			return Result;
+		}
+
+		if (WidgetBlueprint->ParentClass != ParentClass)
+		{
+			AddError(Result, FString::Printf(
+				TEXT("Asset '%s' already exists with parent '%s', but schema requires '%s'."),
+				*PackageName,
+				*GetNameSafe(WidgetBlueprint->ParentClass),
+				*GetNameSafe(ParentClass)));
+			return Result;
+		}
+	}
+	else
+	{
+		UWidgetBlueprintFactory* Factory = NewObject<UWidgetBlueprintFactory>();
+		Factory->BlueprintType = BPTYPE_Normal;
+		Factory->ParentClass = const_cast<UClass*>(ParentClass);
+
+		IAssetTools& AssetTools = FModuleManager::LoadModuleChecked<FAssetToolsModule>("AssetTools").Get();
+		UObject* CreatedAsset = AssetTools.CreateAsset(AssetName, TargetContentFolder, UWidgetBlueprint::StaticClass(), Factory);
+		WidgetBlueprint = Cast<UWidgetBlueprint>(CreatedAsset);
 	}
 
-	UWidgetBlueprintFactory* Factory = NewObject<UWidgetBlueprintFactory>();
-	Factory->BlueprintType = BPTYPE_Normal;
-	Factory->ParentClass = const_cast<UClass*>(ParentClass);
-
-	IAssetTools& AssetTools = FModuleManager::LoadModuleChecked<FAssetToolsModule>("AssetTools").Get();
-	UObject* CreatedAsset = AssetTools.CreateAsset(AssetName, TargetContentFolder, UWidgetBlueprint::StaticClass(), Factory);
-	UWidgetBlueprint* WidgetBlueprint = Cast<UWidgetBlueprint>(CreatedAsset);
 	if (WidgetBlueprint == nullptr || WidgetBlueprint->WidgetTree == nullptr)
 	{
 		AddError(Result, TEXT("Failed to create Widget Blueprint asset."));
@@ -2444,12 +2633,8 @@ FJsonWidgetBlueprintImportResult FJsonWidgetBlueprintImporter::ImportFromFile(co
 	WidgetBlueprint->Modify();
 	WidgetBlueprint->WidgetTree->Modify();
 	Schema.Defaults.GeneratedRichTextStyleSet = CreateRichTextStyleSetDataTable(WidgetBlueprint, Schema, Result);
-
-	if (WidgetBlueprint->WidgetTree->RootWidget != nullptr)
-	{
-		WidgetBlueprint->WidgetTree->RemoveWidget(WidgetBlueprint->WidgetTree->RootWidget);
-		WidgetBlueprint->WidgetTree->RootWidget = nullptr;
-	}
+	ClearMVVMBindings(WidgetBlueprint, Result);
+	ClearWidgetTreeForImport(WidgetBlueprint);
 
 	if (BuildNodeRecursive(WidgetBlueprint, nullptr, Schema.Root, TEXT(""), Schema.Defaults, Result) == nullptr)
 	{
@@ -2462,10 +2647,14 @@ FJsonWidgetBlueprintImportResult FJsonWidgetBlueprintImporter::ImportFromFile(co
 
 	TArray<FImportedMVVMBindingDefinition> MVVMBindingDefinitions;
 	CollectMVVMBindingsRecursive(Schema.Root, MVVMBindingDefinitions);
-	ApplyMVVMBindings(WidgetBlueprint, MVVMBindingDefinitions, ViewModelIdsByName, Result);
 
 	FBlueprintEditorUtils::MarkBlueprintAsStructurallyModified(WidgetBlueprint);
 	FKismetEditorUtilities::CompileBlueprint(WidgetBlueprint);
+	ApplyMVVMBindings(WidgetBlueprint, MVVMBindingDefinitions, ViewModelIdsByName, Result);
+	ApplyClassDefaults(WidgetBlueprint, Schema.Defaults, Result);
+	FBlueprintEditorUtils::MarkBlueprintAsModified(WidgetBlueprint);
+	FKismetEditorUtilities::CompileBlueprint(WidgetBlueprint);
+	ApplyClassDefaults(WidgetBlueprint, Schema.Defaults, Result);
 
 	if (Request.bOpenBlueprintAfterImport && GEditor != nullptr)
 	{

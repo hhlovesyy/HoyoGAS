@@ -9,6 +9,7 @@ struct FJsonWidgetBlueprintImportRequest
 	FString JsonFilePath;
 	FString TargetContentFolder = TEXT("/Game/UI/Generated");
 	bool bOpenBlueprintAfterImport = true;
+	bool bOverwriteExistingAsset = false;
 };
 
 struct FJsonWidgetBlueprintImportResult

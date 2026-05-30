@@ -60,7 +60,6 @@ private:
 	UFUNCTION()
 	void HandlePresentationEventDelayFinished();
 
-	void EnsureDefaultBoardTree();
 	void RebuildPositionMap();
 	void ReconcileWithSnapshot(const FOrigamiBirdBoardSnapshot& Snapshot);
 	void PlayNextPresentationEvent();

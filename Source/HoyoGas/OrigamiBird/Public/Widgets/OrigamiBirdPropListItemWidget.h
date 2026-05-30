@@ -42,10 +42,9 @@ protected:
 	TObjectPtr<UTextBlock> StackRuleText;
 
 private:
-	void EnsureDefaultVisualTree();
 	void BindEntryViewModel(UVM_OrigamiBirdPropEntry* InEntryViewModel);
-	void RefreshVisuals();
-	void RefreshSelectionVisual();
+	void ApplyIconVisual();
+	void ApplySelectionVisual();
 
 	UPROPERTY(Transient)
 	TObjectPtr<UVM_OrigamiBirdPropEntry> CachedPropEntryViewModel;

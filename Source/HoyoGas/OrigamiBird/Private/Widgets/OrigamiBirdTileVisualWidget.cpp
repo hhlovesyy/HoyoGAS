@@ -1,23 +1,24 @@
 #include "Widgets/OrigamiBirdTileVisualWidget.h"
 
-#include "Blueprint/WidgetTree.h"
 #include "Components/Border.h"
 #include "Components/Button.h"
 #include "Components/Image.h"
-#include "Components/Overlay.h"
-#include "Components/OverlaySlot.h"
 #include "Components/SizeBox.h"
+
+DEFINE_LOG_CATEGORY_STATIC(LogOrigamiBirdTileVisualWidget, Log, All);
 
 void UOrigamiBirdTileVisualWidget::NativeOnInitialized()
 {
 	Super::NativeOnInitialized();
 
-	EnsureDefaultVisualTree();
-
 	if (HitButton)
 	{
 		HitButton->OnClicked.RemoveDynamic(this, &UOrigamiBirdTileVisualWidget::HandleHitButtonClicked);
 		HitButton->OnClicked.AddDynamic(this, &UOrigamiBirdTileVisualWidget::HandleHitButtonClicked);
+	}
+	else
+	{
+		UE_LOG(LogOrigamiBirdTileVisualWidget, Error, TEXT("TileVisualWidget requires HitButton to be bound in the widget blueprint."));
 	}
 
 	RefreshVisualState();
@@ -95,57 +96,6 @@ void UOrigamiBirdTileVisualWidget::ResetVisualTransform()
 void UOrigamiBirdTileVisualWidget::HandleHitButtonClicked()
 {
 	OnTileClicked.Broadcast(Tile.BoardPosition);
-}
-
-void UOrigamiBirdTileVisualWidget::EnsureDefaultVisualTree()
-{
-	if (!WidgetTree || WidgetTree->RootWidget)
-	{
-		return;
-	}
-
-	RootSizeBox = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass(), TEXT("GeneratedRootSizeBox"));
-	HitButton = WidgetTree->ConstructWidget<UButton>(UButton::StaticClass(), TEXT("GeneratedHitButton"));
-	UOverlay* RootOverlay = WidgetTree->ConstructWidget<UOverlay>(UOverlay::StaticClass(), TEXT("GeneratedRootOverlay"));
-	BackgroundBorder = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(), TEXT("GeneratedBackgroundBorder"));
-	IconImage = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(), TEXT("GeneratedIconImage"));
-	SelectionBorder = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(), TEXT("GeneratedSelectionBorder"));
-
-	WidgetTree->RootWidget = RootSizeBox;
-	RootSizeBox->SetContent(HitButton);
-	RootSizeBox->SetWidthOverride(96.0f);
-	RootSizeBox->SetHeightOverride(96.0f);
-	HitButton->SetContent(RootOverlay);
-
-	if (BackgroundBorder)
-	{
-		BackgroundBorder->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
-		if (UOverlaySlot* BackgroundOverlaySlot = RootOverlay->AddChildToOverlay(BackgroundBorder))
-		{
-			BackgroundOverlaySlot->SetHorizontalAlignment(HAlign_Fill);
-			BackgroundOverlaySlot->SetVerticalAlignment(VAlign_Fill);
-		}
-	}
-
-	if (IconImage)
-	{
-		IconImage->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
-		if (UOverlaySlot* IconOverlaySlot = RootOverlay->AddChildToOverlay(IconImage))
-		{
-			IconOverlaySlot->SetHorizontalAlignment(HAlign_Fill);
-			IconOverlaySlot->SetVerticalAlignment(VAlign_Fill);
-		}
-	}
-
-	if (SelectionBorder)
-	{
-		SelectionBorder->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
-		if (UOverlaySlot* SelectionOverlaySlot = RootOverlay->AddChildToOverlay(SelectionBorder))
-		{
-			SelectionOverlaySlot->SetHorizontalAlignment(HAlign_Fill);
-			SelectionOverlaySlot->SetVerticalAlignment(VAlign_Fill);
-		}
-	}
 }
 
 void UOrigamiBirdTileVisualWidget::RefreshVisualState()

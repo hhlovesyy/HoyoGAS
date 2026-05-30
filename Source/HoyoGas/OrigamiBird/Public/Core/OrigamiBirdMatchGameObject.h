@@ -18,6 +18,8 @@ UCLASS(BlueprintType)
 class HOYOGAS_API UOrigamiBirdMatchGameObject : public UObject
 {
 	GENERATED_BODY()
+
+	friend struct FOrigamiBirdPropActionExecutor;
 	
 public:
 	UFUNCTION(BlueprintCallable, Category = "OrigamiBird")
@@ -67,15 +69,6 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "OrigamiBird|Props")
 	bool UsePropWithResult(const FOrigamiBirdPropDefinitionRow& Definition, const FOrigamiBirdPropUseRequest& Request, FOrigamiBirdActionResult& OutResult);
-
-	// 道具策略使用的棋盘修改接口：移除一个格子，然后按配置决定是否继续触发三消连锁。
-	// 业务入口仍然是 UsePropWithResult，这个函数只给 UOrigamiBirdPropEffect 子类调用。
-	bool ApplyPropRemoveSingleTile(FIntPoint TargetPosition, bool bResolveAfterUse, FOrigamiBirdActionResult& OutResult);
-	bool ApplyPropRandomReplaceTile(FIntPoint TargetPosition, bool bResolveAfterUse, FOrigamiBirdActionResult& OutResult);
-	bool ApplyPropSwapColumns(int32 FirstColumn, int32 SecondColumn, bool bResolveAfterUse, FOrigamiBirdActionResult& OutResult);
-	bool ApplyPropCopyColumnToNeighbor(int32 SourceColumn, bool bResolveAfterUse, FOrigamiBirdActionResult& OutResult);
-	bool ApplyPropShuffleBoard(bool bResolveAfterUse, FOrigamiBirdActionResult& OutResult);
-	bool ApplyPropExplode3x3(FIntPoint CenterPosition, bool bResolveAfterUse, FOrigamiBirdActionResult& OutResult);
 	
 	//相关的事件
 	UPROPERTY(BlueprintAssignable, Category = "OrigamiBird")
@@ -131,13 +124,11 @@ private:
 	
 	FOrigamiBirdTile MakeTileSnapshot(FIntPoint Position) const;
 	TArray<FOrigamiBirdTile> MakeTileSnapshots(const TArray<FIntPoint>& Positions) const;
-	FOrigamiBirdPresentationEvent MakeSwapEvent(FIntPoint From, FIntPoint To) const;
-	FOrigamiBirdPresentationEvent MakeRemoveEvent(const TArray<FIntPoint>& MatchPositions, int32 ComboIndex) const;
-	FOrigamiBirdPresentationEvent MakeSpawnEvent(const TArray<FOrigamiBirdTile>& SpawnedTiles, const TArray<FIntPoint>& SpawnedPositions) const;
-	FOrigamiBirdPresentationEvent MakeFallEvent(const TArray<FOrigamiBirdTileTransition>& FallTransitions) const;
-	void AppendPresentationEventToTimeline(FOrigamiBirdPresentationTimeline& Timeline, FOrigamiBirdPresentationEvent Event) const;
-	void AppendCollapseEventsToTimeline(const FOrigamiBirdCollapseAndRefillResult& CollapseResult, FOrigamiBirdPresentationTimeline& Timeline) const;
-	void AppendResolveCyclesToTimeline(FOrigamiBirdPresentationTimeline& Timeline, const TArray<FOrigamiBirdResolveCycle>& ResolveCycles) const;
+	FOrigamiBirdBoardChangeStep MakeSwapStep(FIntPoint From, FIntPoint To) const;
+	FOrigamiBirdBoardChangeStep MakeRemoveStep(const TArray<FIntPoint>& Positions) const;
+	FOrigamiBirdBoardChangeStep MakeSpawnStep(const TArray<FOrigamiBirdTile>& SpawnedTiles, const TArray<FIntPoint>& SpawnedPositions) const;
+	FOrigamiBirdBoardChangeStep MakeFallStep(const TArray<FOrigamiBirdTileTransition>& FallTransitions) const;
+	void AppendCollapseSteps(const FOrigamiBirdCollapseAndRefillResult& CollapseResult, FOrigamiBirdActionResult& OutResult) const;
 	void ResolveAfterPropUse(FOrigamiBirdActionResult& OutResult);
 	FOrigamiBirdMatchResolveResult ResolveCurrentMatches();
 };

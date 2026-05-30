@@ -2,7 +2,6 @@
 
 #include "Core/OrigamiBirdBoardResolver.h"
 #include "Core/OrigamiBirdPropEffect.h"
-#include "Core/OrigamiBirdResolvePresentationCompiler.h"
 
 //在当前的 C++ 文件（.cpp）中，定义一个专属的自定义日志类别（Log Category）
 DEFINE_LOG_CATEGORY_STATIC(LogOrigamiBirdMatch, Log, All);
@@ -307,6 +306,7 @@ bool UOrigamiBirdMatchGameObject::UsePropWithResult(const FOrigamiBirdPropDefini
 	OutResult.ActionType = EOrigamiBirdActionType::UseProp;
 	OutResult.PropId = Request.PropId;
 	OutResult.InitialSnapshot = GetSnapshot();
+	OutResult.PresentationConfig = StartParams.PresentationConfig;
 
 	if (Request.PropId.IsNone())
 	{
@@ -384,321 +384,8 @@ bool UOrigamiBirdMatchGameObject::UsePropWithResult(const FOrigamiBirdPropDefini
 	Phase = EOrigamiBirdMatchPhase::WaitingInput;
 	CheckGameEnd();
 	OutResult.FinalSnapshot = GetSnapshot();
-	OutResult.PresentationTimeline.FinalSnapshot = OutResult.FinalSnapshot;
 
 	BroadcastBoardChanged();
-	return true;
-}
-
-bool UOrigamiBirdMatchGameObject::ApplyPropRemoveSingleTile(FIntPoint TargetPosition, bool bResolveAfterUse, FOrigamiBirdActionResult& OutResult)
-{
-	if (!BoardState.IsInsideBoard(TargetPosition))
-	{
-		OutResult.FailureReasonId = TEXT("OutOfBoard");
-		return false;
-	}
-
-	const FOrigamiBirdTile* TargetTile = BoardState.GetTile(TargetPosition);
-	if (!TargetTile || TargetTile->TileType == EOrigamiBirdTileType::None)
-	{
-		OutResult.FailureReasonId = TEXT("EmptyTile");
-		return false;
-	}
-
-	TArray<FIntPoint> RemovedPositions;
-	RemovedPositions.Add(TargetPosition);
-
-	AppendPresentationEventToTimeline(
-		OutResult.PresentationTimeline,
-		MakeRemoveEvent(RemovedPositions, 0));
-
-	BoardState.RemoveTiles(RemovedPositions);
-	RemovedTileCount += RemovedPositions.Num();
-	OutResult.RemovedTileCount += RemovedPositions.Num();
-
-	AppendCollapseEventsToTimeline(CollapseAndRefill(), OutResult.PresentationTimeline);
-
-	if (bResolveAfterUse)
-	{
-		ResolveAfterPropUse(OutResult);
-	}
-
-	OutResult.bAccepted = true;
-	return true;
-}
-
-bool UOrigamiBirdMatchGameObject::ApplyPropRandomReplaceTile(FIntPoint TargetPosition, bool bResolveAfterUse, FOrigamiBirdActionResult& OutResult)
-{
-	if (!BoardState.IsInsideBoard(TargetPosition))
-	{
-		OutResult.FailureReasonId = TEXT("OutOfBoard");
-		return false;
-	}
-
-	FOrigamiBirdTile* TargetTile = BoardState.GetTile(TargetPosition);
-	if (!TargetTile || TargetTile->TileType == EOrigamiBirdTileType::None)
-	{
-		OutResult.FailureReasonId = TEXT("EmptyTile");
-		return false;
-	}
-
-	TArray<FIntPoint> Positions;
-	Positions.Add(TargetPosition);
-
-	AppendPresentationEventToTimeline(
-		OutResult.PresentationTimeline,
-		MakeRemoveEvent(Positions, 0));
-
-	TargetTile->TileType = GenerateRandomTileTypeExcept(TargetTile->TileType);
-	TargetTile->TileId = NextTileId++;
-	TargetTile->BoardPosition = TargetPosition;
-	TargetTile->bIsSelected = false;
-
-	AppendPresentationEventToTimeline(
-		OutResult.PresentationTimeline,
-		MakeSpawnEvent({ *TargetTile }, Positions));
-
-	if (bResolveAfterUse)
-	{
-		ResolveAfterPropUse(OutResult);
-	}
-
-	OutResult.bAccepted = true;
-	return true;
-}
-
-bool UOrigamiBirdMatchGameObject::ApplyPropSwapColumns(int32 FirstColumn, int32 SecondColumn, bool bResolveAfterUse, FOrigamiBirdActionResult& OutResult)
-{
-	if (!BoardState.IsInsideColumn(FirstColumn) || !BoardState.IsInsideColumn(SecondColumn))
-	{
-		OutResult.FailureReasonId = TEXT("OutOfBoard");
-		return false;
-	}
-
-	if (FirstColumn == SecondColumn)
-	{
-		OutResult.FailureReasonId = TEXT("SameColumn");
-		return false;
-	}
-
-	FOrigamiBirdPresentationEvent SwapEvent;
-	SwapEvent.EventType = EOrigamiBirdPresentationEventType::Swap;
-
-	for (int32 Y = 0; Y < StartParams.BoardHeight; ++Y)
-	{
-		const FIntPoint FirstPosition(FirstColumn, Y);
-		const FIntPoint SecondPosition(SecondColumn, Y);
-		const FOrigamiBirdTile* FirstTile = BoardState.GetTile(FirstPosition);
-		const FOrigamiBirdTile* SecondTile = BoardState.GetTile(SecondPosition);
-
-		if (FirstTile && FirstTile->TileId != INDEX_NONE)
-		{
-			FOrigamiBirdTileTransition Transition;
-			Transition.TileId = FirstTile->TileId;
-			Transition.TileType = FirstTile->TileType;
-			Transition.FromPosition = FirstPosition;
-			Transition.ToPosition = SecondPosition;
-			SwapEvent.TileTransitions.Add(Transition);
-		}
-
-		if (SecondTile && SecondTile->TileId != INDEX_NONE)
-		{
-			FOrigamiBirdTileTransition Transition;
-			Transition.TileId = SecondTile->TileId;
-			Transition.TileType = SecondTile->TileType;
-			Transition.FromPosition = SecondPosition;
-			Transition.ToPosition = FirstPosition;
-			SwapEvent.TileTransitions.Add(Transition);
-		}
-	}
-
-	AppendPresentationEventToTimeline(OutResult.PresentationTimeline, SwapEvent);
-
-	for (int32 Y = 0; Y < StartParams.BoardHeight; ++Y)
-	{
-		BoardState.SwapTileData(FIntPoint(FirstColumn, Y), FIntPoint(SecondColumn, Y));
-	}
-
-	if (bResolveAfterUse)
-	{
-		ResolveAfterPropUse(OutResult);
-	}
-
-	OutResult.bAccepted = true;
-	return true;
-}
-
-bool UOrigamiBirdMatchGameObject::ApplyPropCopyColumnToNeighbor(int32 SourceColumn, bool bResolveAfterUse, FOrigamiBirdActionResult& OutResult)
-{
-	if (!BoardState.IsInsideColumn(SourceColumn))
-	{
-		OutResult.FailureReasonId = TEXT("OutOfBoard");
-		return false;
-	}
-
-	const int32 TargetColumn = BoardState.IsInsideColumn(SourceColumn + 1) ? SourceColumn + 1 : SourceColumn - 1;
-	if (!BoardState.IsInsideColumn(TargetColumn))
-	{
-		OutResult.FailureReasonId = TEXT("NoNeighborColumn");
-		return false;
-	}
-
-	TArray<FIntPoint> TargetPositions;
-	for (int32 Y = 0; Y < StartParams.BoardHeight; ++Y)
-	{
-		TargetPositions.Add(FIntPoint(TargetColumn, Y));
-	}
-
-	AppendPresentationEventToTimeline(
-		OutResult.PresentationTimeline,
-		MakeRemoveEvent(TargetPositions, 0));
-
-	TArray<FOrigamiBirdTile> SpawnedTiles;
-	TArray<FIntPoint> SpawnedPositions;
-
-	for (int32 Y = 0; Y < StartParams.BoardHeight; ++Y)
-	{
-		const FOrigamiBirdTile* SourceTile = BoardState.GetTile(FIntPoint(SourceColumn, Y));
-		FOrigamiBirdTile* TargetTile = BoardState.GetTile(FIntPoint(TargetColumn, Y));
-		if (!SourceTile || !TargetTile)
-		{
-			continue;
-		}
-
-		TargetTile->TileType = SourceTile->TileType;
-		TargetTile->TileId = NextTileId++;
-		TargetTile->BoardPosition = FIntPoint(TargetColumn, Y);
-		TargetTile->bIsSelected = false;
-
-		SpawnedTiles.Add(*TargetTile);
-		SpawnedPositions.Add(TargetTile->BoardPosition);
-	}
-
-	AppendPresentationEventToTimeline(
-		OutResult.PresentationTimeline,
-		MakeSpawnEvent(SpawnedTiles, SpawnedPositions));
-
-	if (bResolveAfterUse)
-	{
-		ResolveAfterPropUse(OutResult);
-	}
-
-	OutResult.bAccepted = true;
-	return true;
-}
-
-bool UOrigamiBirdMatchGameObject::ApplyPropShuffleBoard(bool bResolveAfterUse, FOrigamiBirdActionResult& OutResult)
-{
-	TArray<FIntPoint> Positions;
-	TArray<EOrigamiBirdTileType> TileTypes;
-
-	for (int32 Y = 0; Y < StartParams.BoardHeight; ++Y)
-	{
-		for (int32 X = 0; X < StartParams.BoardWidth; ++X)
-		{
-			const FIntPoint Position(X, Y);
-			const FOrigamiBirdTile* Tile = BoardState.GetTile(Position);
-			if (Tile && Tile->TileType != EOrigamiBirdTileType::None && CanFallTileType(Tile->TileType))
-			{
-				Positions.Add(Position);
-				TileTypes.Add(Tile->TileType);
-			}
-		}
-	}
-
-	if (Positions.Num() <= 1)
-	{
-		OutResult.FailureReasonId = TEXT("NotEnoughTiles");
-		return false;
-	}
-
-	AppendPresentationEventToTimeline(
-		OutResult.PresentationTimeline,
-		MakeRemoveEvent(Positions, 0));
-
-	for (int32 Index = TileTypes.Num() - 1; Index > 0; --Index)
-	{
-		const int32 SwapIndex = RandomStream.RandRange(0, Index);
-		TileTypes.Swap(Index, SwapIndex);
-	}
-
-	TArray<FOrigamiBirdTile> SpawnedTiles;
-	TArray<FIntPoint> SpawnedPositions;
-
-	for (int32 Index = 0; Index < Positions.Num(); ++Index)
-	{
-		FOrigamiBirdTile* Tile = BoardState.GetTile(Positions[Index]);
-		if (!Tile)
-		{
-			continue;
-		}
-
-		Tile->TileType = TileTypes[Index];
-		Tile->TileId = NextTileId++;
-		Tile->BoardPosition = Positions[Index];
-		Tile->bIsSelected = false;
-
-		SpawnedTiles.Add(*Tile);
-		SpawnedPositions.Add(Tile->BoardPosition);
-	}
-
-	AppendPresentationEventToTimeline(
-		OutResult.PresentationTimeline,
-		MakeSpawnEvent(SpawnedTiles, SpawnedPositions));
-
-	if (bResolveAfterUse)
-	{
-		ResolveAfterPropUse(OutResult);
-	}
-
-	OutResult.bAccepted = true;
-	return true;
-}
-
-bool UOrigamiBirdMatchGameObject::ApplyPropExplode3x3(FIntPoint CenterPosition, bool bResolveAfterUse, FOrigamiBirdActionResult& OutResult)
-{
-	if (!BoardState.IsInsideBoard(CenterPosition))
-	{
-		OutResult.FailureReasonId = TEXT("OutOfBoard");
-		return false;
-	}
-
-	TArray<FIntPoint> RemovedPositions;
-	for (int32 Y = CenterPosition.Y - 1; Y <= CenterPosition.Y + 1; ++Y)
-	{
-		for (int32 X = CenterPosition.X - 1; X <= CenterPosition.X + 1; ++X)
-		{
-			const FIntPoint Position(X, Y);
-			const FOrigamiBirdTile* Tile = BoardState.GetTile(Position);
-			if (Tile && Tile->TileType != EOrigamiBirdTileType::None && CanFallTileType(Tile->TileType))
-			{
-				RemovedPositions.Add(Position);
-			}
-		}
-	}
-
-	if (RemovedPositions.IsEmpty())
-	{
-		OutResult.FailureReasonId = TEXT("NoTilesToRemove");
-		return false;
-	}
-
-	AppendPresentationEventToTimeline(
-		OutResult.PresentationTimeline,
-		MakeRemoveEvent(RemovedPositions, 0));
-
-	BoardState.RemoveTiles(RemovedPositions);
-	RemovedTileCount += RemovedPositions.Num();
-	OutResult.RemovedTileCount += RemovedPositions.Num();
-
-	AppendCollapseEventsToTimeline(CollapseAndRefill(), OutResult.PresentationTimeline);
-
-	if (bResolveAfterUse)
-	{
-		ResolveAfterPropUse(OutResult);
-	}
-
-	OutResult.bAccepted = true;
 	return true;
 }
 
@@ -901,6 +588,7 @@ bool UOrigamiBirdMatchGameObject::TrySwapTilesWithResult(FIntPoint From, FIntPoi
 	OutResult.From = From;
 	OutResult.To = To;
 	OutResult.InitialSnapshot = GetSnapshot();
+	OutResult.PresentationConfig = StartParams.PresentationConfig;
 	
 	if (Phase != EOrigamiBirdMatchPhase::WaitingInput)
 	{
@@ -935,9 +623,7 @@ bool UOrigamiBirdMatchGameObject::TrySwapTilesWithResult(FIntPoint From, FIntPoi
 	//可以正常交换，进行解算
 	Phase = EOrigamiBirdMatchPhase::Resolving;
 	BoardState.ClearSelection();
-	AppendPresentationEventToTimeline(
-		OutResult.PresentationTimeline,
-		MakeSwapEvent(From, To));
+	OutResult.BoardChangeSteps.Add(MakeSwapStep(From, To));
 	BoardState.SwapTileData(From, To);
 	
 	//交换完，找匹配
@@ -949,14 +635,11 @@ bool UOrigamiBirdMatchGameObject::TrySwapTilesWithResult(FIntPoint From, FIntPoi
 		});
 	if (FirstMatches.IsEmpty())
 	{
-		AppendPresentationEventToTimeline(
-			OutResult.PresentationTimeline,
-			MakeSwapEvent(To, From));
+		OutResult.BoardChangeSteps.Add(MakeSwapStep(To, From));
 		BoardState.SwapTileData(From, To);
 		Phase = EOrigamiBirdMatchPhase::WaitingInput;
 		OutResult.FailureReasonId = TEXT("NoMatch");
 		OutResult.FinalSnapshot = GetSnapshot();
-		OutResult.PresentationTimeline.FinalSnapshot = OutResult.FinalSnapshot;
 		BroadcastBoardChanged();
 		return false;
 	}
@@ -969,7 +652,6 @@ bool UOrigamiBirdMatchGameObject::TrySwapTilesWithResult(FIntPoint From, FIntPoi
 	
 	const FOrigamiBirdMatchResolveResult ResolveResult = ResolveCurrentMatches();
 	OutResult.ResolveCycles = ResolveResult.ResolveCycles;
-	AppendResolveCyclesToTimeline(OutResult.PresentationTimeline, OutResult.ResolveCycles);
 	
 	Phase = EOrigamiBirdMatchPhase::WaitingInput;
 	CheckGameEnd();
@@ -977,7 +659,6 @@ bool UOrigamiBirdMatchGameObject::TrySwapTilesWithResult(FIntPoint From, FIntPoi
 	OutResult.RemovedTileCount = ResolveResult.RemovedTileCount;
 	OutResult.MaxCombo = ResolveResult.MaxComboIndex;
 	OutResult.FinalSnapshot = GetSnapshot();
-	OutResult.PresentationTimeline.FinalSnapshot = OutResult.FinalSnapshot;
 
 	BroadcastBoardChanged();
 	return true;
@@ -1008,10 +689,10 @@ TArray<FOrigamiBirdTile> UOrigamiBirdMatchGameObject::MakeTileSnapshots(const TA
 	return Result;
 }
 
-FOrigamiBirdPresentationEvent UOrigamiBirdMatchGameObject::MakeSwapEvent(FIntPoint From, FIntPoint To) const
+FOrigamiBirdBoardChangeStep UOrigamiBirdMatchGameObject::MakeSwapStep(FIntPoint From, FIntPoint To) const
 {
-	FOrigamiBirdPresentationEvent Event;
-	Event.EventType = EOrigamiBirdPresentationEventType::Swap;
+	FOrigamiBirdBoardChangeStep Step;
+	Step.StepType = EOrigamiBirdBoardChangeStepType::Swap;
 
 	const FOrigamiBirdTile* FromTile = BoardState.GetTile(From);
 	const FOrigamiBirdTile* ToTile = BoardState.GetTile(To);
@@ -1023,7 +704,7 @@ FOrigamiBirdPresentationEvent UOrigamiBirdMatchGameObject::MakeSwapEvent(FIntPoi
 		Transition.TileType = FromTile->TileType;
 		Transition.FromPosition = From;
 		Transition.ToPosition = To;
-		Event.TileTransitions.Add(Transition);
+		Step.TileTransitions.Add(Transition);
 	}
 
 	if (ToTile)
@@ -1033,82 +714,62 @@ FOrigamiBirdPresentationEvent UOrigamiBirdMatchGameObject::MakeSwapEvent(FIntPoi
 		Transition.TileType = ToTile->TileType;
 		Transition.FromPosition = To;
 		Transition.ToPosition = From;
-		Event.TileTransitions.Add(Transition);
+		Step.TileTransitions.Add(Transition);
 	}
 
-	return Event;
+	return Step;
 }
 
-FOrigamiBirdPresentationEvent UOrigamiBirdMatchGameObject::MakeRemoveEvent(
-	const TArray<FIntPoint>& MatchPositions,
-	int32 ComboIndex) const
+FOrigamiBirdBoardChangeStep UOrigamiBirdMatchGameObject::MakeRemoveStep(
+	const TArray<FIntPoint>& Positions) const
 {
-	FOrigamiBirdPresentationEvent Event;
-	Event.EventType = EOrigamiBirdPresentationEventType::Remove;
-	Event.AffectedPositions = MatchPositions;
-	Event.AffectedTiles = MakeTileSnapshots(MatchPositions);
-	Event.ComboIndex = ComboIndex;
-	Event.RemovedTileCount = MatchPositions.Num();
-	Event.SnapshotAfterEvent = GetSnapshot();
-	return Event;
+	FOrigamiBirdBoardChangeStep Step;
+	Step.StepType = EOrigamiBirdBoardChangeStepType::Remove;
+	Step.AffectedPositions = Positions;
+	Step.AffectedTiles = MakeTileSnapshots(Positions);
+	Step.SnapshotAfterStep = GetSnapshot();
+	return Step;
 }
 
-FOrigamiBirdPresentationEvent UOrigamiBirdMatchGameObject::MakeSpawnEvent(
+FOrigamiBirdBoardChangeStep UOrigamiBirdMatchGameObject::MakeSpawnStep(
 	const TArray<FOrigamiBirdTile>& SpawnedTiles,
 	const TArray<FIntPoint>& SpawnedPositions) const
 {
-	FOrigamiBirdPresentationEvent Event;
-	Event.EventType = EOrigamiBirdPresentationEventType::Spawn;
-	Event.AffectedTiles = SpawnedTiles;
-	Event.AffectedPositions = SpawnedPositions;
-	Event.SnapshotAfterEvent = GetSnapshot();
-	return Event;
+	FOrigamiBirdBoardChangeStep Step;
+	Step.StepType = EOrigamiBirdBoardChangeStepType::Spawn;
+	Step.AffectedTiles = SpawnedTiles;
+	Step.AffectedPositions = SpawnedPositions;
+	Step.SnapshotAfterStep = GetSnapshot();
+	return Step;
 }
 
-FOrigamiBirdPresentationEvent UOrigamiBirdMatchGameObject::MakeFallEvent(const TArray<FOrigamiBirdTileTransition>& FallTransitions) const
+FOrigamiBirdBoardChangeStep UOrigamiBirdMatchGameObject::MakeFallStep(const TArray<FOrigamiBirdTileTransition>& FallTransitions) const
 {
-	FOrigamiBirdPresentationEvent Event;
-	Event.EventType = EOrigamiBirdPresentationEventType::Fall;
-	Event.TileTransitions = FallTransitions;
-	Event.SnapshotAfterEvent = GetSnapshot();
-	return Event;
+	FOrigamiBirdBoardChangeStep Step;
+	Step.StepType = EOrigamiBirdBoardChangeStepType::Fall;
+	Step.TileTransitions = FallTransitions;
+	Step.SnapshotAfterStep = GetSnapshot();
+	return Step;
 }
 
-void UOrigamiBirdMatchGameObject::AppendPresentationEventToTimeline(
-	FOrigamiBirdPresentationTimeline& Timeline,
-	FOrigamiBirdPresentationEvent Event) const
-{
-	FOrigamiBirdResolvePresentationCompiler::AppendEvent(Timeline, Event, &StartParams.PresentationConfig);
-}
-
-void UOrigamiBirdMatchGameObject::AppendCollapseEventsToTimeline(
+void UOrigamiBirdMatchGameObject::AppendCollapseSteps(
 	const FOrigamiBirdCollapseAndRefillResult& CollapseResult,
-	FOrigamiBirdPresentationTimeline& Timeline) const
+	FOrigamiBirdActionResult& OutResult) const
 {
 	if (!CollapseResult.FallTransitions.IsEmpty())
 	{
-		AppendPresentationEventToTimeline(Timeline, MakeFallEvent(CollapseResult.FallTransitions));
+		OutResult.BoardChangeSteps.Add(MakeFallStep(CollapseResult.FallTransitions));
 	}
 
 	if (!CollapseResult.SpawnedTiles.IsEmpty())
 	{
-		AppendPresentationEventToTimeline(
-			Timeline,
-			MakeSpawnEvent(CollapseResult.SpawnedTiles, CollapseResult.SpawnedPositions));
+		OutResult.BoardChangeSteps.Add(MakeSpawnStep(CollapseResult.SpawnedTiles, CollapseResult.SpawnedPositions));
 	}
-}
-
-void UOrigamiBirdMatchGameObject::AppendResolveCyclesToTimeline(
-	FOrigamiBirdPresentationTimeline& Timeline,
-	const TArray<FOrigamiBirdResolveCycle>& ResolveCycles) const
-{
-	FOrigamiBirdResolvePresentationCompiler::AppendResolveCycles(Timeline, ResolveCycles, &StartParams.PresentationConfig);
 }
 
 void UOrigamiBirdMatchGameObject::ResolveAfterPropUse(FOrigamiBirdActionResult& OutResult)
 {
 	const FOrigamiBirdMatchResolveResult ResolveResult = ResolveCurrentMatches();
-	AppendResolveCyclesToTimeline(OutResult.PresentationTimeline, ResolveResult.ResolveCycles);
 	OutResult.ResolveCycles.Append(ResolveResult.ResolveCycles);
 	OutResult.TotalScoreDelta += ResolveResult.TotalScoreDelta;
 	OutResult.RemovedTileCount += ResolveResult.RemovedTileCount;

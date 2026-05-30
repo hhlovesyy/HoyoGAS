@@ -4,7 +4,10 @@
   "parentClass": "OrigamiBirdBoardWidget",
   "defaults": {
     "fontObject": "/Game/Genshin/Fonts/Genshin_Font.Genshin_Font",
-    "richTextStyleSet": "auto"
+    "richTextStyleSet": "auto",
+    "classDefaults": {
+      "TileVisualWidgetClass": "/Game/UI/Generated/WBP_OrigamiBirdTileVisualWidget.WBP_OrigamiBirdTileVisualWidget_C"
+    }
   },
   "root": {
     "type": "Overlay",

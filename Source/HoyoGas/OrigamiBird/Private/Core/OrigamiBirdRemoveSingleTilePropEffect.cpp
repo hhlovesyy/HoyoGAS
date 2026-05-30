@@ -1,6 +1,7 @@
 #include "Core/OrigamiBirdRemoveSingleTilePropEffect.h"
 
 #include "Core/OrigamiBirdMatchGameObject.h"
+#include "Core/OrigamiBirdPropActionExecutor.h"
 
 bool UOrigamiBirdRemoveSingleTilePropEffect::ValidateDefinition(const FOrigamiBirdPropDefinitionRow& Definition, FString& OutError) const
 {
@@ -34,5 +35,5 @@ bool UOrigamiBirdRemoveSingleTilePropEffect::Execute_Implementation(
 		return false;
 	}
 
-	return Match->ApplyPropRemoveSingleTile(Request.TargetPositions[0], Definition.bResolveAfterUse, OutResult);
+	return FOrigamiBirdPropActionExecutor::RemoveSingleTile(*Match, Request.TargetPositions[0], Definition.bResolveAfterUse, OutResult);
 }

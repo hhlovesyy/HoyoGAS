@@ -439,6 +439,40 @@ struct HOYOGAS_API FOrigamiBirdTileTransition
 	FIntPoint ToPosition = FIntPoint(INDEX_NONE, INDEX_NONE);
 };
 
+UENUM(BlueprintType)
+enum class EOrigamiBirdBoardChangeStepType : uint8
+{
+	None,
+	Swap,
+	Remove,
+	Fall,
+	Spawn,
+	BoardSync
+};
+
+// 一次玩家动作中，不属于三消连锁的棋盘变化事实。
+// 它不包含动画时间，只描述棋盘发生了什么；表现层再把它编译成 PresentationTimeline。
+USTRUCT(BlueprintType)
+struct HOYOGAS_API FOrigamiBirdBoardChangeStep
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "OrigamiBird")
+	EOrigamiBirdBoardChangeStepType StepType = EOrigamiBirdBoardChangeStepType::None;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "OrigamiBird")
+	TArray<FOrigamiBirdTileTransition> TileTransitions;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "OrigamiBird")
+	TArray<FOrigamiBirdTile> AffectedTiles;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "OrigamiBird")
+	TArray<FIntPoint> AffectedPositions;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "OrigamiBird")
+	FOrigamiBirdBoardSnapshot SnapshotAfterStep;
+};
+
 // 一轮三消连锁中的玩法事实。
 // 它描述“这一轮发生了什么”，不描述 UI 应该如何编排动画。
 USTRUCT(BlueprintType)
@@ -543,7 +577,7 @@ enum class EOrigamiBirdActionType : uint8
 };
 
 // 一次玩家动作的完整解算结果。交换和道具都走这一个结果类型。
-// 玩法层输出 ResolveCycles，表现层只消费 PresentationTimeline。
+// 玩法层输出 BoardChangeSteps/ResolveCycles，表现层再编译 PresentationTimeline。
 USTRUCT(BlueprintType)
 struct HOYOGAS_API FOrigamiBirdActionResult
 {
@@ -576,6 +610,12 @@ struct HOYOGAS_API FOrigamiBirdActionResult
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "OrigamiBird")
 	TArray<FOrigamiBirdResolveCycle> ResolveCycles;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "OrigamiBird")
+	TArray<FOrigamiBirdBoardChangeStep> BoardChangeSteps;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "OrigamiBird")
+	FOrigamiBirdPresentationConfig PresentationConfig;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "OrigamiBird")
 	FOrigamiBirdPresentationTimeline PresentationTimeline;

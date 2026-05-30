@@ -267,6 +267,7 @@ FReply SJsonWidgetBlueprintImporterWindow::HandleImportClicked()
 	Request.JsonFilePath = JsonPathTextBox.IsValid() ? JsonPathTextBox->GetText().ToString().TrimStartAndEnd() : FString();
 	Request.TargetContentFolder = TargetFolderTextBox.IsValid() ? TargetFolderTextBox->GetText().ToString().TrimStartAndEnd() : FString();
 	Request.bOpenBlueprintAfterImport = bOpenBlueprintAfterImport;
+	Request.bOverwriteExistingAsset = bOverwriteExistingFiles;
 
 	const FJsonWidgetBlueprintImportResult Result = FJsonWidgetBlueprintImporter::ImportFromFile(Request);
 

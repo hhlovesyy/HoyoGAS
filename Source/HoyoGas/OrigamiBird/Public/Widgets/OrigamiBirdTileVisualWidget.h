@@ -77,7 +77,6 @@ private:
 	UFUNCTION()
 	void HandleHitButtonClicked();
 
-	void EnsureDefaultVisualTree();
 	void RefreshVisualState();
 
 	UPROPERTY(Transient)
