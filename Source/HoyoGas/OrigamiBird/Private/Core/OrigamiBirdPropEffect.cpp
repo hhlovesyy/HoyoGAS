@@ -42,12 +42,12 @@ bool UOrigamiBirdPropEffect::TryGetParamString(const FOrigamiBirdPropDefinitionR
 	return false;
 }
 
-bool UOrigamiBirdPropEffect::GetBoolParam(const FOrigamiBirdPropDefinitionRow& Definition, FName Key, bool DefaultValue) const
+bool UOrigamiBirdPropEffect::TryGetBoolParam(const FOrigamiBirdPropDefinitionRow& Definition, FName Key, bool& OutValue) const
 {
 	FString RawValue;
 	if (!TryGetParamString(Definition, Key, RawValue))
 	{
-		return DefaultValue;
+		return false;
 	}
 
 	RawValue = RawValue.TrimStartAndEnd();
@@ -55,6 +55,7 @@ bool UOrigamiBirdPropEffect::GetBoolParam(const FOrigamiBirdPropDefinitionRow& D
 		|| RawValue.Equals(TEXT("1"), ESearchCase::IgnoreCase)
 		|| RawValue.Equals(TEXT("yes"), ESearchCase::IgnoreCase))
 	{
+		OutValue = true;
 		return true;
 	}
 
@@ -62,68 +63,79 @@ bool UOrigamiBirdPropEffect::GetBoolParam(const FOrigamiBirdPropDefinitionRow& D
 		|| RawValue.Equals(TEXT("0"), ESearchCase::IgnoreCase)
 		|| RawValue.Equals(TEXT("no"), ESearchCase::IgnoreCase))
 	{
+		OutValue = false;
+		return true;
+	}
+
+	return false;
+}
+
+bool UOrigamiBirdPropEffect::TryGetIntParam(const FOrigamiBirdPropDefinitionRow& Definition, FName Key, int32& OutValue) const
+{
+	FString RawValue;
+	if (!TryGetParamString(Definition, Key, RawValue))
+	{
 		return false;
 	}
 
-	return DefaultValue;
+	return LexTryParseString(OutValue, *RawValue.TrimStartAndEnd());
 }
 
-int32 UOrigamiBirdPropEffect::GetIntParam(const FOrigamiBirdPropDefinitionRow& Definition, FName Key, int32 DefaultValue) const
+bool UOrigamiBirdPropEffect::TryGetFloatParam(const FOrigamiBirdPropDefinitionRow& Definition, FName Key, float& OutValue) const
 {
 	FString RawValue;
 	if (!TryGetParamString(Definition, Key, RawValue))
 	{
-		return DefaultValue;
+		return false;
 	}
 
-	int32 ParsedValue = DefaultValue;
-	return LexTryParseString(ParsedValue, *RawValue.TrimStartAndEnd()) ? ParsedValue : DefaultValue;
+	return LexTryParseString(OutValue, *RawValue.TrimStartAndEnd());
 }
 
-float UOrigamiBirdPropEffect::GetFloatParam(const FOrigamiBirdPropDefinitionRow& Definition, FName Key, float DefaultValue) const
+bool UOrigamiBirdPropEffect::TryGetNameParam(const FOrigamiBirdPropDefinitionRow& Definition, FName Key, FName& OutValue) const
 {
 	FString RawValue;
 	if (!TryGetParamString(Definition, Key, RawValue))
 	{
-		return DefaultValue;
-	}
-
-	float ParsedValue = DefaultValue;
-	return LexTryParseString(ParsedValue, *RawValue.TrimStartAndEnd()) ? ParsedValue : DefaultValue;
-}
-
-FName UOrigamiBirdPropEffect::GetNameParam(const FOrigamiBirdPropDefinitionRow& Definition, FName Key, FName DefaultValue) const
-{
-	FString RawValue;
-	if (!TryGetParamString(Definition, Key, RawValue))
-	{
-		return DefaultValue;
-	}
-
-	RawValue = RawValue.TrimStartAndEnd();
-	return RawValue.IsEmpty() ? DefaultValue : FName(*RawValue);
-}
-
-EOrigamiBirdTileType UOrigamiBirdPropEffect::GetTileTypeParam(const FOrigamiBirdPropDefinitionRow& Definition, FName Key, EOrigamiBirdTileType DefaultValue) const
-{
-	FString RawValue;
-	if (!TryGetParamString(Definition, Key, RawValue))
-	{
-		return DefaultValue;
+		return false;
 	}
 
 	RawValue = RawValue.TrimStartAndEnd();
 	if (RawValue.IsEmpty())
 	{
-		return DefaultValue;
+		return false;
+	}
+
+	OutValue = FName(*RawValue);
+	return true;
+}
+
+bool UOrigamiBirdPropEffect::TryGetTileTypeParam(const FOrigamiBirdPropDefinitionRow& Definition, FName Key, EOrigamiBirdTileType& OutValue) const
+{
+	FString RawValue;
+	if (!TryGetParamString(Definition, Key, RawValue))
+	{
+		return false;
+	}
+
+	RawValue = RawValue.TrimStartAndEnd();
+	if (RawValue.IsEmpty())
+	{
+		return false;
 	}
 
 	const UEnum* TileTypeEnum = StaticEnum<EOrigamiBirdTileType>();
 	if (!TileTypeEnum)
 	{
-		return DefaultValue;
+		return false;
 	}
 
 	const int64 Value = TileTypeEnum->GetValueByNameString(RawValue);
-	return Value == INDEX_NONE ? DefaultValue : static_cast<EOrigamiBirdTileType>(Value);
+	if (Value == INDEX_NONE)
+	{
+		return false;
+	}
+
+	OutValue = static_cast<EOrigamiBirdTileType>(Value);
+	return true;
 }

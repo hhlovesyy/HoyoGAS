@@ -50,6 +50,16 @@ public:
 
 // 炸掉点击点周围 3x3。直接爆炸本身不加分，是否触发后续连锁由参数控制。
 UCLASS(BlueprintType, Blueprintable)
+class HOYOGAS_API UOrigamiBirdReplaceRandomTilesPropEffect : public UOrigamiBirdPropEffect
+{
+	GENERATED_BODY()
+
+public:
+	virtual bool ValidateDefinition(const FOrigamiBirdPropDefinitionRow& Definition, FString& OutError) const override;
+	virtual bool Execute_Implementation(UOrigamiBirdMatchGameObject* Match, const FOrigamiBirdPropDefinitionRow& Definition, const FOrigamiBirdPropUseRequest& Request, FOrigamiBirdActionResult& OutResult) const override;
+};
+
+UCLASS(BlueprintType, Blueprintable)
 class HOYOGAS_API UOrigamiBirdExplode3x3PropEffect : public UOrigamiBirdPropEffect
 {
 	GENERATED_BODY()

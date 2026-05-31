@@ -99,7 +99,7 @@ void FOrigamiBirdResolvePresentationCompiler::AppendResolveCycles(
 
 		FOrigamiBirdPresentationEvent RemoveEvent;
 		RemoveEvent.EventType = EOrigamiBirdPresentationEventType::Remove;
-		RemoveEvent.AffectedPositions = Cycle.MatchPositions;
+		RemoveEvent.AffectedPositions = Cycle.RemovedPositions.IsEmpty() ? Cycle.MatchPositions : Cycle.RemovedPositions;
 		RemoveEvent.AffectedTiles = Cycle.RemovedTiles;
 		RemoveEvent.ComboIndex = Cycle.ComboIndex;
 		RemoveEvent.RemovedTileCount = Cycle.RemovedTileCount;

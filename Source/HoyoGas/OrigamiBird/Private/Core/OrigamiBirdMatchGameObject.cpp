@@ -2,6 +2,7 @@
 
 #include "Core/OrigamiBirdBoardResolver.h"
 #include "Core/OrigamiBirdPropEffect.h"
+#include "Core/OrigamiBirdTileEffectResolver.h"
 
 //在当前的 C++ 文件（.cpp）中，定义一个专属的自定义日志类别（Log Category）
 DEFINE_LOG_CATEGORY_STATIC(LogOrigamiBirdMatch, Log, All);
@@ -97,19 +98,33 @@ void UOrigamiBirdMatchGameObject::Initialize(const FOrigamiBirdMatchStartParams&
 {
 	StartParams = InStartParams;
 
-	if (StartParams.AvailableTileTypes.IsEmpty())
+	auto ResetMatchState = [this](EOrigamiBirdMatchPhase InPhase, int32 InMovesRemaining)
 	{
-		UE_LOG(LogOrigamiBirdMatch, Error, TEXT("Initialize failed: AvailableTileTypes is empty. Check OrigamiBird level configuration."));
-		TileDefinitionsByType.Reset();
 		BoardState.Reset();
 		PropStacks.Reset();
 		NextTileId = 1;
 		Score = 0;
-		MovesRemaining = 0;
+		MovesRemaining = InMovesRemaining;
 		UsedMoves = 0;
 		MaxCombo = 0;
 		RemovedTileCount = 0;
-		Phase = EOrigamiBirdMatchPhase::None;
+		Phase = InPhase;
+	};
+
+	auto ResetInitializeFailureState = [this, &ResetMatchState](bool bResetTileDefinitions)
+	{
+		if (bResetTileDefinitions)
+		{
+			TileDefinitionsByType.Reset();
+		}
+
+		ResetMatchState(EOrigamiBirdMatchPhase::None, 0);
+	};
+
+	if (StartParams.AvailableTileTypes.IsEmpty())
+	{
+		UE_LOG(LogOrigamiBirdMatch, Error, TEXT("Initialize failed: AvailableTileTypes is empty. Check OrigamiBird level configuration."));
+		ResetInitializeFailureState(true);
 		return;
 	}
 
@@ -121,34 +136,29 @@ void UOrigamiBirdMatchGameObject::Initialize(const FOrigamiBirdMatchStartParams&
 			Error,
 			TEXT("Initialize failed: PresentationConfig is invalid: %s. Check OrigamiBird level configuration."),
 			*PresentationConfigError);
-		TileDefinitionsByType.Reset();
-		BoardState.Reset();
-		PropStacks.Reset();
-		NextTileId = 1;
-		Score = 0;
-		MovesRemaining = 0;
-		UsedMoves = 0;
-		MaxCombo = 0;
-		RemovedTileCount = 0;
-		Phase = EOrigamiBirdMatchPhase::None;
+		ResetInitializeFailureState(true);
 		return;
 	}
 
 	RebuildTileDefinitionMap();
+	for (const EOrigamiBirdTileType TileType : StartParams.AvailableTileTypes)
+	{
+		if (TileType == EOrigamiBirdTileType::None || !FindTileDefinitionInternal(TileType))
+		{
+			UE_LOG(
+				LogOrigamiBirdMatch,
+				Error,
+				TEXT("Initialize failed: AvailableTileTypes contains TileType=%d without a TileDefinition row."),
+				static_cast<int32>(TileType));
+			ResetInitializeFailureState(false);
+			return;
+		}
+	}
 	StartParams.BoardWidth = FMath::Clamp(StartParams.BoardWidth, 3, 12);
 	StartParams.BoardHeight = FMath::Clamp(StartParams.BoardHeight, 3, 12);
 	RandomStream.Initialize(StartParams.RandomSeed);
 
-	BoardState.Reset();
-	PropStacks.Reset();
-	NextTileId = 1;
-
-	Score = 0;
-	MovesRemaining = FMath::Max(1, StartParams.MoveLimit);
-	UsedMoves = 0;
-	MaxCombo = 0;
-	RemovedTileCount = 0;
-	Phase = EOrigamiBirdMatchPhase::WaitingInput;
+	ResetMatchState(EOrigamiBirdMatchPhase::WaitingInput, FMath::Max(1, StartParams.MoveLimit));
 
 	FOrigamiBirdBoardResolver::GenerateInitialBoard(
 		BoardState,
@@ -193,11 +203,30 @@ void UOrigamiBirdMatchGameObject::RebuildTileDefinitionMap()
 			TileDefinitionsByType.Add(Definition.TileType, Definition);
 		}
 	}
+
 }
 
 const FOrigamiBirdTileDefinitionRow* UOrigamiBirdMatchGameObject::FindTileDefinitionInternal(EOrigamiBirdTileType TileType) const
 {
 	return TileDefinitionsByType.Find(TileType);
+}
+
+const FOrigamiBirdTileDefinitionRow* UOrigamiBirdMatchGameObject::FindTileDefinitionForRule(
+	EOrigamiBirdTileType TileType,
+	const TCHAR* RuleName) const
+{
+	if (const FOrigamiBirdTileDefinitionRow* Definition = FindTileDefinitionInternal(TileType))
+	{
+		return Definition;
+	}
+
+	UE_LOG(
+		LogOrigamiBirdMatch,
+		Error,
+		TEXT("Missing TileDefinition for %s rule TileType=%d."),
+		RuleName,
+		static_cast<int32>(TileType));
+	return nullptr;
 }
 
 bool UOrigamiBirdMatchGameObject::FindTileDefinition(EOrigamiBirdTileType TileType, FOrigamiBirdTileDefinitionRow& OutDefinition) const
@@ -308,62 +337,55 @@ bool UOrigamiBirdMatchGameObject::UsePropWithResult(const FOrigamiBirdPropDefini
 	OutResult.InitialSnapshot = GetSnapshot();
 	OutResult.PresentationConfig = StartParams.PresentationConfig;
 
-	if (Request.PropId.IsNone())
+	auto RejectAction = [this, &OutResult](FName FailureReasonId)
 	{
-		OutResult.FailureReasonId = TEXT("InvalidPropId");
+		OutResult.FailureReasonId = FailureReasonId;
 		OutResult.FinalSnapshot = GetSnapshot();
 		return false;
+	};
+
+	if (Request.PropId.IsNone())
+	{
+		return RejectAction(TEXT("InvalidPropId"));
 	}
 
 	if (Phase != EOrigamiBirdMatchPhase::WaitingInput)
 	{
-		OutResult.FailureReasonId = TEXT("InvalidPhase");
-		OutResult.FinalSnapshot = GetSnapshot();
-		return false;
+		return RejectAction(TEXT("InvalidPhase"));
 	}
 
 	if (GetPropCount(Request.PropId) <= 0)
 	{
-		OutResult.FailureReasonId = TEXT("PropNotOwned");
-		OutResult.FinalSnapshot = GetSnapshot();
-		return false;
+		return RejectAction(TEXT("PropNotOwned"));
 	}
 
 	if (!Definition.EffectClass)
 	{
-		OutResult.FailureReasonId = TEXT("MissingEffectClass");
-		OutResult.FinalSnapshot = GetSnapshot();
-		return false;
+		return RejectAction(TEXT("MissingEffectClass"));
 	}
 
 	const UOrigamiBirdPropEffect* Effect = Definition.EffectClass->GetDefaultObject<UOrigamiBirdPropEffect>();
 	if (!Effect)
 	{
-		OutResult.FailureReasonId = TEXT("InvalidEffectClass");
-		OutResult.FinalSnapshot = GetSnapshot();
-		return false;
+		return RejectAction(TEXT("InvalidEffectClass"));
 	}
 
 	FString PropDefinitionError;
 	if (!Effect->ValidateDefinition(Definition, PropDefinitionError))
 	{
-		OutResult.FailureReasonId = TEXT("InvalidPropDefinition");
-		OutResult.FinalSnapshot = GetSnapshot();
 		UE_LOG(
 			LogOrigamiBirdMatch,
 			Error,
 			TEXT("UsePropWithResult failed because prop '%s' configuration is invalid: %s"),
 			*Request.PropId.ToString(),
 			*PropDefinitionError);
-		return false;
+		return RejectAction(TEXT("InvalidPropDefinition"));
 	}
 
 	FName TargetFailureReasonId;
 	if (!ValidatePropUseRequestTargets(Definition, Request, TargetFailureReasonId))
 	{
-		OutResult.FailureReasonId = TargetFailureReasonId;
-		OutResult.FinalSnapshot = GetSnapshot();
-		return false;
+		return RejectAction(TargetFailureReasonId);
 	}
 
 	Phase = EOrigamiBirdMatchPhase::Resolving;
@@ -396,12 +418,12 @@ bool UOrigamiBirdMatchGameObject::CanMatchTileType(EOrigamiBirdTileType TileType
 		return false;
 	}
 
-	if (const FOrigamiBirdTileDefinitionRow* Definition = FindTileDefinitionInternal(TileType))
+	if (const FOrigamiBirdTileDefinitionRow* Definition = FindTileDefinitionForRule(TileType, TEXT("match")))
 	{
 		return Definition->bCanMatch;
 	}
 
-	return true;
+	return false;
 }
 
 bool UOrigamiBirdMatchGameObject::CanFallTileType(EOrigamiBirdTileType TileType) const
@@ -411,12 +433,12 @@ bool UOrigamiBirdMatchGameObject::CanFallTileType(EOrigamiBirdTileType TileType)
 		return true;
 	}
 
-	if (const FOrigamiBirdTileDefinitionRow* Definition = FindTileDefinitionInternal(TileType))
+	if (const FOrigamiBirdTileDefinitionRow* Definition = FindTileDefinitionForRule(TileType, TEXT("fall")))
 	{
 		return Definition->bCanFall;
 	}
 
-	return true;
+	return false;
 }
 
 bool UOrigamiBirdMatchGameObject::CanSwapTileType(EOrigamiBirdTileType TileType) const
@@ -426,22 +448,22 @@ bool UOrigamiBirdMatchGameObject::CanSwapTileType(EOrigamiBirdTileType TileType)
 		return false;
 	}
 
-	if (const FOrigamiBirdTileDefinitionRow* Definition = FindTileDefinitionInternal(TileType))
+	if (const FOrigamiBirdTileDefinitionRow* Definition = FindTileDefinitionForRule(TileType, TEXT("swap")))
 	{
 		return Definition->bCanSwap;
 	}
 
-	return true;
+	return false;
 }
 
 int32 UOrigamiBirdMatchGameObject::GetTileScoreValue(EOrigamiBirdTileType TileType) const
 {
-	if (const FOrigamiBirdTileDefinitionRow* Definition = FindTileDefinitionInternal(TileType))
+	if (const FOrigamiBirdTileDefinitionRow* Definition = FindTileDefinitionForRule(TileType, TEXT("score")))
 	{
 		return FMath::Max(0, Definition->ScoreValue);
 	}
 
-	return 10;
+	return 0;
 }
 
 bool UOrigamiBirdMatchGameObject::AreAdjacent(FIntPoint A, FIntPoint B) const
@@ -589,35 +611,61 @@ bool UOrigamiBirdMatchGameObject::TrySwapTilesWithResult(FIntPoint From, FIntPoi
 	OutResult.To = To;
 	OutResult.InitialSnapshot = GetSnapshot();
 	OutResult.PresentationConfig = StartParams.PresentationConfig;
+
+	auto RejectAction = [this, &OutResult](FName FailureReasonId)
+	{
+		OutResult.FailureReasonId = FailureReasonId;
+		OutResult.FinalSnapshot = GetSnapshot();
+		return false;
+	};
+
+	auto ConsumeMove = [this, &OutResult]()
+	{
+		OutResult.bAccepted = true;
+		--MovesRemaining;
+		++UsedMoves;
+		OutResult.UsedMoveDelta = 1;
+		OnMovesChanged.Broadcast(MovesRemaining);
+	};
+
+	auto ApplyResolveResult = [&OutResult](const FOrigamiBirdMatchResolveResult& ResolveResult)
+	{
+		OutResult.ResolveCycles = ResolveResult.ResolveCycles;
+		OutResult.TotalScoreDelta = ResolveResult.TotalScoreDelta;
+		OutResult.RemovedTileCount = ResolveResult.RemovedTileCount;
+		OutResult.MaxCombo = ResolveResult.MaxComboIndex;
+	};
+
+	auto FinalizeAcceptedResolve = [this, &OutResult, &ApplyResolveResult](const FOrigamiBirdMatchResolveResult& ResolveResult)
+	{
+		Phase = EOrigamiBirdMatchPhase::WaitingInput;
+		CheckGameEnd();
+		ApplyResolveResult(ResolveResult);
+		OutResult.FinalSnapshot = GetSnapshot();
+		BroadcastBoardChanged();
+		return true;
+	};
 	
 	if (Phase != EOrigamiBirdMatchPhase::WaitingInput)
 	{
-		OutResult.FailureReasonId = TEXT("InvalidPhase");
-		OutResult.FinalSnapshot = GetSnapshot();
-		return false;
+		return RejectAction(TEXT("InvalidPhase"));
 	}
 
 	if (!BoardState.IsInsideBoard(From) || !BoardState.IsInsideBoard(To))
 	{
-		OutResult.FailureReasonId = TEXT("OutOfBoard");
-		OutResult.FinalSnapshot = GetSnapshot();
-		return false;
+		return RejectAction(TEXT("OutOfBoard"));
 	}
 
 	if (!AreAdjacent(From, To))
 	{
-		OutResult.FailureReasonId = TEXT("NotAdjacent");
-		OutResult.FinalSnapshot = GetSnapshot();
-		return false;
+		return RejectAction(TEXT("NotAdjacent"));
 	}
 	
 	const FOrigamiBirdTile* FromTile = BoardState.GetTile(From);
 	const FOrigamiBirdTile* ToTile = BoardState.GetTile(To);
 	if (!FromTile || !ToTile || !CanSwapTileType(FromTile->TileType) || !CanSwapTileType(ToTile->TileType))
 	{
-		OutResult.FailureReasonId = TEXT("CannotSwap");
-		OutResult.FinalSnapshot = GetSnapshot();
-		return false;
+		return RejectAction(TEXT("CannotSwap"));
 	}
 	
 	//可以正常交换，进行解算
@@ -635,33 +683,44 @@ bool UOrigamiBirdMatchGameObject::TrySwapTilesWithResult(FIntPoint From, FIntPoi
 		});
 	if (FirstMatches.IsEmpty())
 	{
-		OutResult.BoardChangeSteps.Add(MakeSwapStep(To, From));
-		BoardState.SwapTileData(From, To);
-		Phase = EOrigamiBirdMatchPhase::WaitingInput;
-		OutResult.FailureReasonId = TEXT("NoMatch");
-		OutResult.FinalSnapshot = GetSnapshot();
-		BroadcastBoardChanged();
-		return false;
+		const TArray<FIntPoint> SwapEffectRemovedPositions =
+			FOrigamiBirdTileEffectResolver::ResolveSwapRemovePositions(
+				BoardState,
+				From,
+				To,
+				[this](EOrigamiBirdTileType TileType)
+				{
+					return FindTileDefinitionInternal(TileType);
+				},
+				[this](EOrigamiBirdTileType TileType)
+				{
+					return CanFallTileType(TileType);
+				});
+
+		if (SwapEffectRemovedPositions.IsEmpty())
+		{
+			OutResult.BoardChangeSteps.Add(MakeSwapStep(To, From));
+			BoardState.SwapTileData(From, To);
+			Phase = EOrigamiBirdMatchPhase::WaitingInput;
+			BroadcastBoardChanged();
+			return RejectAction(TEXT("NoMatch"));
+		}
+
+		ConsumeMove();
+
+		FOrigamiBirdResolveSeed SwapEffectSeed;
+		SwapEffectSeed.MatchPositions.Add(From);
+		SwapEffectSeed.MatchPositions.Add(To);
+		SwapEffectSeed.RemovedPositions = SwapEffectRemovedPositions;
+
+		const FOrigamiBirdMatchResolveResult ResolveResult = ResolveCurrentMatches(&SwapEffectSeed);
+		return FinalizeAcceptedResolve(ResolveResult);
 	}
 	
-	OutResult.bAccepted = true;
-	--MovesRemaining;
-	++UsedMoves;
-	OutResult.UsedMoveDelta = 1; //额外多了一个步骤
-	OnMovesChanged.Broadcast(MovesRemaining);
+	ConsumeMove();
 	
 	const FOrigamiBirdMatchResolveResult ResolveResult = ResolveCurrentMatches();
-	OutResult.ResolveCycles = ResolveResult.ResolveCycles;
-	
-	Phase = EOrigamiBirdMatchPhase::WaitingInput;
-	CheckGameEnd();
-	OutResult.TotalScoreDelta = ResolveResult.TotalScoreDelta;
-	OutResult.RemovedTileCount = ResolveResult.RemovedTileCount;
-	OutResult.MaxCombo = ResolveResult.MaxComboIndex;
-	OutResult.FinalSnapshot = GetSnapshot();
-
-	BroadcastBoardChanged();
-	return true;
+	return FinalizeAcceptedResolve(ResolveResult);
 }
 
 FOrigamiBirdTile UOrigamiBirdMatchGameObject::MakeTileSnapshot(FIntPoint Position) const
@@ -775,7 +834,7 @@ void UOrigamiBirdMatchGameObject::ResolveAfterPropUse(FOrigamiBirdActionResult& 
 	OutResult.RemovedTileCount += ResolveResult.RemovedTileCount;
 }
 
-FOrigamiBirdMatchResolveResult UOrigamiBirdMatchGameObject::ResolveCurrentMatches()
+FOrigamiBirdMatchResolveResult UOrigamiBirdMatchGameObject::ResolveCurrentMatches(const FOrigamiBirdResolveSeed* InitialSeed)
 {
 	return FOrigamiBirdMatchResolver::ResolveCurrentMatches(
 		BoardState,
@@ -799,6 +858,20 @@ FOrigamiBirdMatchResolveResult UOrigamiBirdMatchGameObject::ResolveCurrentMatche
 		{
 			return GetTileScoreValue(TileType);
 		},
+		[this](const FOrigamiBirdBoardState& InBoardState, const TArray<FIntPoint>& MatchPositions)
+		{
+			return FOrigamiBirdTileEffectResolver::ExpandMatchedRemovePositions(
+				InBoardState,
+				MatchPositions,
+				[this](EOrigamiBirdTileType TileType)
+				{
+					return FindTileDefinitionInternal(TileType);
+				},
+				[this](EOrigamiBirdTileType TileType)
+				{
+					return CanFallTileType(TileType);
+				});
+		},
 		[this]()
 		{
 			return GetSnapshot();
@@ -809,7 +882,8 @@ FOrigamiBirdMatchResolveResult UOrigamiBirdMatchGameObject::ResolveCurrentMatche
 			RemovedTileCount += InRemovedTileCount;
 			MaxCombo = FMath::Max(ComboIndex, MaxCombo);
 			OnScoreChanged.Broadcast(Score);
-		});
+		},
+		InitialSeed);
 }
 
 bool UOrigamiBirdMatchGameObject::SelectTile(FIntPoint BoardPosition)

@@ -268,6 +268,91 @@ bool FOrigamiBirdPropActionExecutor::ShuffleBoard(
 	return true;
 }
 
+bool FOrigamiBirdPropActionExecutor::ReplaceRandomTilesWithType(
+	UOrigamiBirdMatchGameObject& Match,
+	EOrigamiBirdTileType ReplacementTileType,
+	int32 Count,
+	bool bResolveAfterUse,
+	FOrigamiBirdActionResult& OutResult)
+{
+	if (ReplacementTileType == EOrigamiBirdTileType::None)
+	{
+		OutResult.FailureReasonId = TEXT("InvalidReplacementTileType");
+		return false;
+	}
+
+	if (!Match.FindTileDefinitionInternal(ReplacementTileType))
+	{
+		OutResult.FailureReasonId = TEXT("MissingReplacementTileDefinition");
+		return false;
+	}
+
+	TArray<FIntPoint> CandidatePositions;
+	for (int32 Y = 0; Y < Match.StartParams.BoardHeight; ++Y)
+	{
+		for (int32 X = 0; X < Match.StartParams.BoardWidth; ++X)
+		{
+			const FIntPoint Position(X, Y);
+			const FOrigamiBirdTile* Tile = Match.BoardState.GetTile(Position);
+			if (Tile && Tile->TileType != EOrigamiBirdTileType::None && Match.CanFallTileType(Tile->TileType))
+			{
+				CandidatePositions.Add(Position);
+			}
+		}
+	}
+
+	if (CandidatePositions.IsEmpty())
+	{
+		OutResult.FailureReasonId = TEXT("NoTilesToReplace");
+		return false;
+	}
+
+	for (int32 Index = CandidatePositions.Num() - 1; Index > 0; --Index)
+	{
+		const int32 SwapIndex = Match.RandomStream.RandRange(0, Index);
+		CandidatePositions.Swap(Index, SwapIndex);
+	}
+
+	const int32 ReplaceCount = FMath::Clamp(Count, 1, CandidatePositions.Num());
+	TArray<FIntPoint> ReplacedPositions;
+	ReplacedPositions.Reserve(ReplaceCount);
+	for (int32 Index = 0; Index < ReplaceCount; ++Index)
+	{
+		ReplacedPositions.Add(CandidatePositions[Index]);
+	}
+
+	OutResult.BoardChangeSteps.Add(Match.MakeRemoveStep(ReplacedPositions));
+
+	TArray<FOrigamiBirdTile> SpawnedTiles;
+	TArray<FIntPoint> SpawnedPositions;
+	for (const FIntPoint& Position : ReplacedPositions)
+	{
+		FOrigamiBirdTile* Tile = Match.BoardState.GetTile(Position);
+		if (!Tile)
+		{
+			continue;
+		}
+
+		Tile->TileType = ReplacementTileType;
+		Tile->TileId = Match.NextTileId++;
+		Tile->BoardPosition = Position;
+		Tile->bIsSelected = false;
+
+		SpawnedTiles.Add(*Tile);
+		SpawnedPositions.Add(Position);
+	}
+
+	OutResult.BoardChangeSteps.Add(Match.MakeSpawnStep(SpawnedTiles, SpawnedPositions));
+
+	if (bResolveAfterUse)
+	{
+		Match.ResolveAfterPropUse(OutResult);
+	}
+
+	OutResult.bAccepted = true;
+	return true;
+}
+
 bool FOrigamiBirdPropActionExecutor::Explode3x3(
 	UOrigamiBirdMatchGameObject& Match,
 	FIntPoint CenterPosition,

@@ -7,6 +7,20 @@
 using FOrigamiBirdGetTileScoreValue = TFunctionRef<int32(EOrigamiBirdTileType)>;
 using FOrigamiBirdMakeBoardSnapshot = TFunctionRef<FOrigamiBirdBoardSnapshot()>;
 using FOrigamiBirdApplyResolveScore = TFunctionRef<void(int32 ScoreDelta, int32 RemovedTileCount, int32 ComboIndex)>;
+using FOrigamiBirdExpandRemovePositions = TFunctionRef<TArray<FIntPoint>(
+	const FOrigamiBirdBoardState& BoardState,
+	const TArray<FIntPoint>& MatchPositions)>;
+
+struct HOYOGAS_API FOrigamiBirdResolveSeed
+{
+	TArray<FIntPoint> MatchPositions;
+	TArray<FIntPoint> RemovedPositions;
+
+	bool HasRemovedPositions() const
+	{
+		return !RemovedPositions.IsEmpty();
+	}
+};
 
 struct HOYOGAS_API FOrigamiBirdMatchResolveResult
 {
@@ -27,7 +41,9 @@ struct HOYOGAS_API FOrigamiBirdMatchResolver
 		FOrigamiBirdGenerateTileType GenerateTileType,
 		FOrigamiBirdGenerateTileId GenerateTileId,
 		FOrigamiBirdGetTileScoreValue GetTileScoreValue,
+		FOrigamiBirdExpandRemovePositions ExpandRemovePositions,
 		FOrigamiBirdMakeBoardSnapshot MakeSnapshot,
 		FOrigamiBirdApplyResolveScore ApplyResolveScore,
+		const FOrigamiBirdResolveSeed* InitialSeed = nullptr,
 		int32 MaxResolveIterations = 100);
 };

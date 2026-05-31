@@ -78,7 +78,8 @@ UOrigamiBirdMatchGameObject* UOrigamiBirdMatchSubsystem::StartMatchByLevelId(FNa
 	GetAllTileDefinitions(TileDefinitions);
 	if (TileDefinitions.IsEmpty())
 	{
-		UE_LOG(LogOrigamiBirdMatchSubsystem, Warning, TEXT("StartMatchByLevelId is starting without TileDefinition rows. Default tile rules will be used."));
+		UE_LOG(LogOrigamiBirdMatchSubsystem, Error, TEXT("StartMatchByLevelId failed because TileDefinitionTable has no rows."));
+		return nullptr;
 	}
 
 	EndActiveMatch();

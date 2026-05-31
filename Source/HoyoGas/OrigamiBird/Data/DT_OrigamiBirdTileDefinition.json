@@ -1,0 +1,99 @@
+[
+  {
+    "Name": "RedFruit",
+    "TileType": "RedFruit",
+    "DisplayName": "Red Fruit",
+    "Icon": "/Game/OrigamiBird/Icons/T_RedFruit.T_RedFruit",
+    "DebugColor": "(R=1.000000,G=0.100000,B=0.100000,A=1.000000)",
+    "bCanMatch": true,
+    "bCanFall": true,
+    "bCanSwap": true,
+    "ScoreValue": 10,
+    "Triggers": []
+  },
+  {
+    "Name": "BlueFruit",
+    "TileType": "BlueFruit",
+    "DisplayName": "Blue Fruit",
+    "Icon": "/Game/OrigamiBird/Icons/T_BlueFruit.T_BlueFruit",
+    "DebugColor": "(R=0.100000,G=0.350000,B=1.000000,A=1.000000)",
+    "bCanMatch": true,
+    "bCanFall": true,
+    "bCanSwap": true,
+    "ScoreValue": 10,
+    "Triggers": []
+  },
+  {
+    "Name": "GreenFruit",
+    "TileType": "GreenFruit",
+    "DisplayName": "Green Fruit",
+    "Icon": "/Game/OrigamiBird/Icons/T_GreenFruit.T_GreenFruit",
+    "DebugColor": "(R=0.100000,G=0.900000,B=0.250000,A=1.000000)",
+    "bCanMatch": true,
+    "bCanFall": true,
+    "bCanSwap": true,
+    "ScoreValue": 10,
+    "Triggers": []
+  },
+  {
+    "Name": "YellowFruit",
+    "TileType": "YellowFruit",
+    "DisplayName": "Yellow Fruit",
+    "Icon": "/Game/OrigamiBird/Icons/T_YellowFruit.T_YellowFruit",
+    "DebugColor": "(R=1.000000,G=0.850000,B=0.100000,A=1.000000)",
+    "bCanMatch": true,
+    "bCanFall": true,
+    "bCanSwap": true,
+    "ScoreValue": 10,
+    "Triggers": []
+  },
+  {
+    "Name": "PurpleFruit",
+    "TileType": "PurpleFruit",
+    "DisplayName": "Purple Fruit",
+    "Icon": "/Game/OrigamiBird/Icons/T_PurpleFruit.T_PurpleFruit",
+    "DebugColor": "(R=0.650000,G=0.250000,B=1.000000,A=1.000000)",
+    "bCanMatch": true,
+    "bCanFall": true,
+    "bCanSwap": true,
+    "ScoreValue": 10,
+    "Triggers": []
+  },
+  {
+    "Name": "SpecialClearFruit",
+    "TileType": "SpecialClearFruit",
+    "DisplayName": "Special Clear Fruit",
+    "Icon": "",
+    "DebugColor": "(R=1.000000,G=0.550000,B=0.050000,A=1.000000)",
+    "bCanMatch": true,
+    "bCanFall": true,
+    "bCanSwap": true,
+    "ScoreValue": 10,
+    "Triggers": [
+      {
+        "TriggerType": "AdjacentRemoved",
+        "EffectClass": "/Script/HoyoGas.OrigamiBirdClearTilesByModeEffect",
+        "EffectParams": [
+          {
+            "Key": "ClearMode",
+            "Value": "Row"
+          }
+        ]
+      },
+      {
+        "TriggerType": "Swapped",
+        "EffectClass": "/Script/HoyoGas.OrigamiBirdClearTilesByModeEffect",
+        "EffectParams": [
+          {
+            "Key": "ClearMode",
+            "Value": "Board"
+          },
+          {
+            "Key": "RequireOtherSameTileType",
+            "Value": "true"
+          }
+        ]
+      }
+    ]
+  }
+]

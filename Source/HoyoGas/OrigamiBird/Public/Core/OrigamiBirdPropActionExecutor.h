@@ -41,6 +41,13 @@ struct HOYOGAS_API FOrigamiBirdPropActionExecutor
 		bool bResolveAfterUse,
 		FOrigamiBirdActionResult& OutResult);
 
+	static bool ReplaceRandomTilesWithType(
+		UOrigamiBirdMatchGameObject& Match,
+		EOrigamiBirdTileType ReplacementTileType,
+		int32 Count,
+		bool bResolveAfterUse,
+		FOrigamiBirdActionResult& OutResult);
+
 	static bool Explode3x3(
 		UOrigamiBirdMatchGameObject& Match,
 		FIntPoint CenterPosition,

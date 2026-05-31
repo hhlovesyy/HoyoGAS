@@ -7,6 +7,7 @@
 #include "OrigamiBirdMatchTypes.generated.h"
 
 class UOrigamiBirdPropEffect;
+class UOrigamiBirdTileEffect;
 
 //1.三消游戏支持的棋盘内容类型
 UENUM(BlueprintType)
@@ -18,6 +19,46 @@ enum class EOrigamiBirdTileType: uint8
 	GreenFruit,
 	YellowFruit,
 	PurpleFruit,
+	SpecialClearFruit,
+};
+
+UENUM(BlueprintType)
+enum class EOrigamiBirdTileTriggerType : uint8
+{
+	None,
+	Matched,
+	Removed,
+	AdjacentRemoved,
+	Swapped
+};
+
+// 方块效果参数：一条 Key/Value 配置。效果类自己解释参数含义。
+USTRUCT(BlueprintType)
+struct HOYOGAS_API FOrigamiBirdTileEffectParam
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "OrigamiBird")
+	FName Key = NAME_None;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "OrigamiBird")
+	FString Value;
+};
+
+// 方块触发器配置。用于描述“什么时候触发哪个效果”。
+USTRUCT(BlueprintType)
+struct HOYOGAS_API FOrigamiBirdTileTriggerDefinition
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "OrigamiBird")
+	EOrigamiBirdTileTriggerType TriggerType = EOrigamiBirdTileTriggerType::None;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "OrigamiBird")
+	TSubclassOf<UOrigamiBirdTileEffect> EffectClass;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "OrigamiBird")
+	TArray<FOrigamiBirdTileEffectParam> EffectParams;
 };
 
 // 方块策划表：定义“某一种格子”的表现和基础规则。
@@ -58,6 +99,10 @@ struct HOYOGAS_API FOrigamiBirdTileDefinitionRow : public FTableRowBase
 	// 单个方块被消除时的基础分。普通玩法可都配 10，特殊方块可更高。
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "OrigamiBird")
 	int32 ScoreValue = 10;
+
+	// 特殊方块触发器。普通水果留空即可。
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "OrigamiBird")
+	TArray<FOrigamiBirdTileTriggerDefinition> Triggers;
 };
 
 // 道具的业务类型。这里描述“使用后要对棋盘做什么”。
@@ -77,7 +122,10 @@ enum class EOrigamiBirdPropType : uint8
 	SwapColumns,
 
 	// 把一列复制到另一列。
-	CopyColumn
+	CopyColumn,
+
+	// 随机把若干格替换为指定方块类型。
+	SpawnSpecialTiles
 };
 
 // 道具需要玩家选择什么目标。
@@ -485,6 +533,9 @@ struct HOYOGAS_API FOrigamiBirdResolveCycle
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "OrigamiBird")
 	TArray<FIntPoint> MatchPositions;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "OrigamiBird")
+	TArray<FIntPoint> RemovedPositions;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "OrigamiBird")
 	TArray<FOrigamiBirdTile> MatchedTiles;

@@ -1,0 +1,58 @@
+[
+  {
+    "Name": "Level_001",
+    "DisplayName": "Test Level 001",
+    "BoardWidth": 7,
+    "BoardHeight": 7,
+    "MoveLimit": 25,
+    "TargetScore": 3000,
+    "RandomSeed": 12345,
+    "AvailableTileTypes": [
+      "RedFruit",
+      "BlueFruit",
+      "GreenFruit",
+      "YellowFruit",
+      "PurpleFruit"
+    ],
+    "PresentationConfig": {
+      "TimingRules": [
+        {
+          "EventType": "Swap",
+          "Duration": 0.14,
+          "OffsetFromPrevious": 0.0,
+          "bStartWithPrevious": false
+        },
+        {
+          "EventType": "MatchHighlight",
+          "Duration": 0.1,
+          "OffsetFromPrevious": 0.0,
+          "bStartWithPrevious": false
+        },
+        {
+          "EventType": "Remove",
+          "Duration": 0.14,
+          "OffsetFromPrevious": 0.0,
+          "bStartWithPrevious": false
+        },
+        {
+          "EventType": "Score",
+          "Duration": 0.01,
+          "OffsetFromPrevious": 0.0,
+          "bStartWithPrevious": false
+        },
+        {
+          "EventType": "Fall",
+          "Duration": 0.18,
+          "OffsetFromPrevious": 0.0,
+          "bStartWithPrevious": false
+        },
+        {
+          "EventType": "Spawn",
+          "Duration": 0.14,
+          "OffsetFromPrevious": 0.0,
+          "bStartWithPrevious": false
+        }
+      ]
+    }
+  }
+]

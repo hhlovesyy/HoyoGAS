@@ -104,6 +104,64 @@ bool UOrigamiBirdShuffleBoardPropEffect::Execute_Implementation(UOrigamiBirdMatc
 	return FOrigamiBirdPropActionExecutor::ShuffleBoard(*Match, Definition.bResolveAfterUse, OutResult);
 }
 
+bool UOrigamiBirdReplaceRandomTilesPropEffect::ValidateDefinition(const FOrigamiBirdPropDefinitionRow& Definition, FString& OutError) const
+{
+	if (!ValidateExpectedTargetType(Definition, EOrigamiBirdPropTargetType::None, OutError))
+	{
+		return false;
+	}
+
+	EOrigamiBirdTileType ReplacementTileType = EOrigamiBirdTileType::None;
+	if (!TryGetTileTypeParam(Definition, TEXT("TileType"), ReplacementTileType)
+		|| ReplacementTileType == EOrigamiBirdTileType::None)
+	{
+		OutError = TEXT("EffectParams.TileType must be configured");
+		return false;
+	}
+
+	int32 Count = 0;
+	if (!TryGetIntParam(Definition, TEXT("Count"), Count) || Count <= 0)
+	{
+		OutError = TEXT("EffectParams.Count must be configured and greater than 0");
+		return false;
+	}
+
+	return true;
+}
+
+bool UOrigamiBirdReplaceRandomTilesPropEffect::Execute_Implementation(UOrigamiBirdMatchGameObject* Match, const FOrigamiBirdPropDefinitionRow& Definition, const FOrigamiBirdPropUseRequest& Request, FOrigamiBirdActionResult& OutResult) const
+{
+	(void)Request;
+
+	if (!Match)
+	{
+		OutResult.FailureReasonId = TEXT("InvalidMatch");
+		return false;
+	}
+
+	EOrigamiBirdTileType ReplacementTileType = EOrigamiBirdTileType::None;
+	if (!TryGetTileTypeParam(Definition, TEXT("TileType"), ReplacementTileType)
+		|| ReplacementTileType == EOrigamiBirdTileType::None)
+	{
+		OutResult.FailureReasonId = TEXT("MissingReplacementTileType");
+		return false;
+	}
+
+	int32 Count = 0;
+	if (!TryGetIntParam(Definition, TEXT("Count"), Count) || Count <= 0)
+	{
+		OutResult.FailureReasonId = TEXT("InvalidReplacementCount");
+		return false;
+	}
+
+	return FOrigamiBirdPropActionExecutor::ReplaceRandomTilesWithType(
+		*Match,
+		ReplacementTileType,
+		Count,
+		Definition.bResolveAfterUse,
+		OutResult);
+}
+
 bool UOrigamiBirdExplode3x3PropEffect::ValidateDefinition(const FOrigamiBirdPropDefinitionRow& Definition, FString& OutError) const
 {
 	return ValidateExpectedTargetType(Definition, EOrigamiBirdPropTargetType::SingleTile, OutError);

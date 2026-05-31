@@ -75,6 +75,30 @@
     "ReplacementTileType": "None"
   },
   {
+    "Name": "Prop_SpawnSpecialClearFruit",
+    "DisplayName": "Spawn Special Fruit",
+    "Description": "Randomly replace three tiles with special fruits. Swap two adjacent special fruits to clear the board.",
+    "Icon": "",
+    "PropType": "SpawnSpecialTiles",
+    "TargetType": "None",
+    "EffectClass": "/Script/HoyoGas.OrigamiBirdReplaceRandomTilesPropEffect",
+    "EffectParams": [
+      {
+        "Key": "TileType",
+        "Value": "SpecialClearFruit"
+      },
+      {
+        "Key": "Count",
+        "Value": "3"
+      }
+    ],
+    "InitialCount": 1,
+    "bStackable": true,
+    "MaxStackCount": 99,
+    "bResolveAfterUse": false,
+    "ReplacementTileType": "None"
+  },
+  {
     "Name": "Prop_Explode3x3",
     "DisplayName": "3x3 Bomb",
     "Description": "Select one tile and remove the 3x3 area around it.",

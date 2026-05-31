@@ -55,12 +55,15 @@ FOrigamiBirdMatchResolveResult FOrigamiBirdMatchResolver::ResolveCurrentMatches(
 	FOrigamiBirdGenerateTileType GenerateTileType,
 	FOrigamiBirdGenerateTileId GenerateTileId,
 	FOrigamiBirdGetTileScoreValue GetTileScoreValue,
+	FOrigamiBirdExpandRemovePositions ExpandRemovePositions,
 	FOrigamiBirdMakeBoardSnapshot MakeSnapshot,
 	FOrigamiBirdApplyResolveScore ApplyResolveScore,
+	const FOrigamiBirdResolveSeed* InitialSeed,
 	int32 MaxResolveIterations)
 {
 	FOrigamiBirdMatchResolveResult Result;
 	int32 ResolveGuard = 0;
+	bool bConsumedInitialSeed = false;
 
 	while (true)
 	{
@@ -71,8 +74,26 @@ FOrigamiBirdMatchResolveResult FOrigamiBirdMatchResolver::ResolveCurrentMatches(
 			break;
 		}
 
-		const TArray<FIntPoint> Matches = FOrigamiBirdBoardResolver::FindAllMatches(BoardState, CanMatchTileType);
-		if (Matches.IsEmpty())
+		TArray<FIntPoint> Matches;
+		TArray<FIntPoint> RemovedPositions;
+
+		if (!bConsumedInitialSeed && InitialSeed && InitialSeed->HasRemovedPositions())
+		{
+			Matches = InitialSeed->MatchPositions;
+			RemovedPositions = InitialSeed->RemovedPositions;
+			bConsumedInitialSeed = true;
+		}
+		else
+		{
+			bConsumedInitialSeed = true;
+			Matches = FOrigamiBirdBoardResolver::FindAllMatches(BoardState, CanMatchTileType);
+			if (!Matches.IsEmpty())
+			{
+				RemovedPositions = ExpandRemovePositions(BoardState, Matches);
+			}
+		}
+
+		if (RemovedPositions.IsEmpty())
 		{
 			break;
 		}
@@ -82,15 +103,16 @@ FOrigamiBirdMatchResolveResult FOrigamiBirdMatchResolver::ResolveCurrentMatches(
 		FOrigamiBirdResolveCycle Cycle;
 		Cycle.ComboIndex = Result.MaxComboIndex;
 		Cycle.MatchPositions = Matches;
+		Cycle.RemovedPositions = RemovedPositions;
 		Cycle.MatchedTiles = MakeTileSnapshots(BoardState, Matches);
-		Cycle.RemovedTiles = Cycle.MatchedTiles;
-		Cycle.RemovedTileCount = Matches.Num();
+		Cycle.RemovedTiles = MakeTileSnapshots(BoardState, RemovedPositions);
+		Cycle.RemovedTileCount = RemovedPositions.Num();
 		Cycle.SnapshotBeforeRemove = MakeSnapshot();
 
 		int32 BaseScore = 0;
-		for (const FIntPoint& MatchPosition : Matches)
+		for (const FIntPoint& RemovedPosition : RemovedPositions)
 		{
-			const FOrigamiBirdTile* Tile = BoardState.GetTile(MatchPosition);
+			const FOrigamiBirdTile* Tile = BoardState.GetTile(RemovedPosition);
 			BaseScore += Tile ? GetTileScoreValue(Tile->TileType) : 0;
 		}
 
@@ -98,11 +120,11 @@ FOrigamiBirdMatchResolveResult FOrigamiBirdMatchResolver::ResolveCurrentMatches(
 			static_cast<float>(BaseScore) * GetComboScoreMultiplier(Result.MaxComboIndex));
 		Cycle.ScoreDelta = ScoreDelta;
 
-		BoardState.RemoveTiles(Matches);
-		ApplyResolveScore(ScoreDelta, Matches.Num(), Result.MaxComboIndex);
+		BoardState.RemoveTiles(RemovedPositions);
+		ApplyResolveScore(ScoreDelta, RemovedPositions.Num(), Result.MaxComboIndex);
 
 		Result.TotalScoreDelta += ScoreDelta;
-		Result.RemovedTileCount += Matches.Num();
+		Result.RemovedTileCount += RemovedPositions.Num();
 		Cycle.SnapshotAfterScore = MakeSnapshot();
 
 		const FOrigamiBirdCollapseAndRefillResult CollapseResult =

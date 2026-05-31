@@ -101,6 +101,7 @@ private:
 	void RebuildTileDefinitionMap();
 
 	const FOrigamiBirdTileDefinitionRow* FindTileDefinitionInternal(EOrigamiBirdTileType TileType) const;
+	const FOrigamiBirdTileDefinitionRow* FindTileDefinitionForRule(EOrigamiBirdTileType TileType, const TCHAR* RuleName) const;
 	bool CanMatchTileType(EOrigamiBirdTileType TileType) const;
 	bool CanFallTileType(EOrigamiBirdTileType TileType) const;
 	bool CanSwapTileType(EOrigamiBirdTileType TileType) const;
@@ -130,5 +131,5 @@ private:
 	FOrigamiBirdBoardChangeStep MakeFallStep(const TArray<FOrigamiBirdTileTransition>& FallTransitions) const;
 	void AppendCollapseSteps(const FOrigamiBirdCollapseAndRefillResult& CollapseResult, FOrigamiBirdActionResult& OutResult) const;
 	void ResolveAfterPropUse(FOrigamiBirdActionResult& OutResult);
-	FOrigamiBirdMatchResolveResult ResolveCurrentMatches();
+	FOrigamiBirdMatchResolveResult ResolveCurrentMatches(const FOrigamiBirdResolveSeed* InitialSeed = nullptr);
 };
