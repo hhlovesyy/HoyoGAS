@@ -6,6 +6,8 @@
 #include "UObject/Object.h"
 #include "OrigamiBirdTileEffect.generated.h"
 
+using FOrigamiBirdCanClearTileType = TFunctionRef<bool(EOrigamiBirdTileType)>;
+
 struct HOYOGAS_API FOrigamiBirdTileEffectContext
 {
 	FOrigamiBirdTileEffectContext(
@@ -13,12 +15,12 @@ struct HOYOGAS_API FOrigamiBirdTileEffectContext
 		EOrigamiBirdTileTriggerType InTriggerType,
 		FIntPoint InTriggerPosition,
 		const TArray<FIntPoint>& InSourcePositions,
-		FOrigamiBirdCanFallTileType InCanRemoveTileType)
+		FOrigamiBirdCanClearTileType InCanClearTileType)
 		: BoardState(InBoardState)
 		, TriggerType(InTriggerType)
 		, TriggerPosition(InTriggerPosition)
 		, SourcePositions(InSourcePositions)
-		, CanRemoveTileType(InCanRemoveTileType)
+		, CanClearTileType(InCanClearTileType)
 	{
 	}
 
@@ -27,7 +29,7 @@ struct HOYOGAS_API FOrigamiBirdTileEffectContext
 	FIntPoint TriggerPosition = FIntPoint(INDEX_NONE, INDEX_NONE);
 	FIntPoint OtherPosition = FIntPoint(INDEX_NONE, INDEX_NONE);
 	const TArray<FIntPoint>& SourcePositions;
-	FOrigamiBirdCanFallTileType CanRemoveTileType;
+	FOrigamiBirdCanClearTileType CanClearTileType;
 };
 
 struct HOYOGAS_API FOrigamiBirdTileEffectResult

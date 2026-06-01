@@ -101,10 +101,14 @@ private:
 	void RebuildTileDefinitionMap();
 
 	const FOrigamiBirdTileDefinitionRow* FindTileDefinitionInternal(EOrigamiBirdTileType TileType) const;
-	const FOrigamiBirdTileDefinitionRow* FindTileDefinitionForRule(EOrigamiBirdTileType TileType, const TCHAR* RuleName) const;
+	const FOrigamiBirdTileDefinitionRow* FindTileDefinitionForQuery(EOrigamiBirdTileType TileType, const TCHAR* QueryName) const;
+	bool HasTileCapability(EOrigamiBirdTileType TileType, EOrigamiBirdTileCapability Capability) const;
 	bool CanMatchTileType(EOrigamiBirdTileType TileType) const;
 	bool CanFallTileType(EOrigamiBirdTileType TileType) const;
 	bool CanSwapTileType(EOrigamiBirdTileType TileType) const;
+	bool CanClearByMatchTileType(EOrigamiBirdTileType TileType) const;
+	bool CanClearByEffectTileType(EOrigamiBirdTileType TileType) const;
+	bool CanGenerateRandomTileType(EOrigamiBirdTileType TileType) const;
 	int32 GetTileScoreValue(EOrigamiBirdTileType TileType) const;
 	
 	bool AreAdjacent(FIntPoint A, FIntPoint B) const;

@@ -27,7 +27,7 @@ namespace
 		EOrigamiBirdTileTriggerType TriggerType,
 		const TArray<FIntPoint>& SourcePositions,
 		FOrigamiBirdFindTileDefinition FindTileDefinition,
-		FOrigamiBirdCanFallTileType CanRemoveTileType,
+		FOrigamiBirdCanClearTileType CanClearByEffectTileType,
 		TSet<int32>& TriggeredTileIndices,
 		TArray<FIntPoint>& InOutRemovedPositions)
 	{
@@ -76,7 +76,7 @@ namespace
 				continue;
 			}
 
-			FOrigamiBirdTileEffectContext Context(BoardState, TriggerType, TriggerPosition, SourcePositions, CanRemoveTileType);
+			FOrigamiBirdTileEffectContext Context(BoardState, TriggerType, TriggerPosition, SourcePositions, CanClearByEffectTileType);
 			Context.OtherPosition = OtherPosition;
 
 			FOrigamiBirdTileEffectResult EffectResult;
@@ -99,8 +99,9 @@ namespace
 	void AddMatchedAndAdjacentTriggers(
 		const FOrigamiBirdBoardState& BoardState,
 		const TArray<FIntPoint>& MatchPositions,
+		const TArray<FIntPoint>& RemovedByMatchPositions,
 		FOrigamiBirdFindTileDefinition FindTileDefinition,
-		FOrigamiBirdCanFallTileType CanRemoveTileType,
+		FOrigamiBirdCanClearTileType CanClearByEffectTileType,
 		TSet<int32>& TriggeredTileIndices,
 		TArray<FIntPoint>& InOutRemovedPositions)
 	{
@@ -113,24 +114,28 @@ namespace
 				EOrigamiBirdTileTriggerType::Matched,
 				MatchPositions,
 				FindTileDefinition,
-				CanRemoveTileType,
+				CanClearByEffectTileType,
 				TriggeredTileIndices,
 				InOutRemovedPositions);
+		}
 
+		const TArray<FIntPoint> RemovedByMatchPositionsSnapshot = RemovedByMatchPositions;
+		for (const FIntPoint& RemovedPosition : RemovedByMatchPositionsSnapshot)
+		{
 			ExecuteTriggersAtPosition(
 				BoardState,
-				MatchPosition,
+				RemovedPosition,
 				FIntPoint(INDEX_NONE, INDEX_NONE),
 				EOrigamiBirdTileTriggerType::Removed,
 				MatchPositions,
 				FindTileDefinition,
-				CanRemoveTileType,
+				CanClearByEffectTileType,
 				TriggeredTileIndices,
 				InOutRemovedPositions);
 
 			for (const FIntPoint& Offset : AdjacentOffsets)
 			{
-				const FIntPoint AdjacentPosition = MatchPosition + Offset;
+				const FIntPoint AdjacentPosition = RemovedPosition + Offset;
 				if (!BoardState.IsInsideBoard(AdjacentPosition))
 				{
 					continue;
@@ -139,11 +144,11 @@ namespace
 				ExecuteTriggersAtPosition(
 					BoardState,
 					AdjacentPosition,
-					MatchPosition,
+					RemovedPosition,
 					EOrigamiBirdTileTriggerType::AdjacentRemoved,
 					MatchPositions,
 					FindTileDefinition,
-					CanRemoveTileType,
+					CanClearByEffectTileType,
 					TriggeredTileIndices,
 					InOutRemovedPositions);
 			}
@@ -155,15 +160,26 @@ TArray<FIntPoint> FOrigamiBirdTileEffectResolver::ExpandMatchedRemovePositions(
 	const FOrigamiBirdBoardState& BoardState,
 	const TArray<FIntPoint>& MatchPositions,
 	FOrigamiBirdFindTileDefinition FindTileDefinition,
-	FOrigamiBirdCanFallTileType CanRemoveTileType)
+	FOrigamiBirdCanClearTileType CanClearByMatchTileType,
+	FOrigamiBirdCanClearTileType CanClearByEffectTileType)
 {
-	TArray<FIntPoint> RemovedPositions = MatchPositions;
+	TArray<FIntPoint> RemovedPositions;
+	for (const FIntPoint& MatchPosition : MatchPositions)
+	{
+		const FOrigamiBirdTile* Tile = BoardState.GetTile(MatchPosition);
+		if (Tile && Tile->TileType != EOrigamiBirdTileType::None && CanClearByMatchTileType(Tile->TileType))
+		{
+			RemovedPositions.AddUnique(MatchPosition);
+		}
+	}
+
 	TSet<int32> TriggeredTileIndices;
 	AddMatchedAndAdjacentTriggers(
 		BoardState,
 		MatchPositions,
+		RemovedPositions,
 		FindTileDefinition,
-		CanRemoveTileType,
+		CanClearByEffectTileType,
 		TriggeredTileIndices,
 		RemovedPositions);
 
@@ -176,7 +192,7 @@ TArray<FIntPoint> FOrigamiBirdTileEffectResolver::ResolveSwapRemovePositions(
 	FIntPoint From,
 	FIntPoint To,
 	FOrigamiBirdFindTileDefinition FindTileDefinition,
-	FOrigamiBirdCanFallTileType CanRemoveTileType)
+	FOrigamiBirdCanClearTileType CanClearByEffectTileType)
 {
 	TArray<FIntPoint> SourcePositions;
 	SourcePositions.Add(From);
@@ -192,7 +208,7 @@ TArray<FIntPoint> FOrigamiBirdTileEffectResolver::ResolveSwapRemovePositions(
 		EOrigamiBirdTileTriggerType::Swapped,
 		SourcePositions,
 		FindTileDefinition,
-		CanRemoveTileType,
+		CanClearByEffectTileType,
 		TriggeredTileIndices,
 		RemovedPositions);
 
@@ -203,7 +219,7 @@ TArray<FIntPoint> FOrigamiBirdTileEffectResolver::ResolveSwapRemovePositions(
 		EOrigamiBirdTileTriggerType::Swapped,
 		SourcePositions,
 		FindTileDefinition,
-		CanRemoveTileType,
+		CanClearByEffectTileType,
 		TriggeredTileIndices,
 		RemovedPositions);
 

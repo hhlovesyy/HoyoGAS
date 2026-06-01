@@ -12,12 +12,13 @@ struct HOYOGAS_API FOrigamiBirdTileEffectResolver
 		const FOrigamiBirdBoardState& BoardState,
 		const TArray<FIntPoint>& MatchPositions,
 		FOrigamiBirdFindTileDefinition FindTileDefinition,
-		FOrigamiBirdCanFallTileType CanRemoveTileType);
+		FOrigamiBirdCanClearTileType CanClearByMatchTileType,
+		FOrigamiBirdCanClearTileType CanClearByEffectTileType);
 
 	static TArray<FIntPoint> ResolveSwapRemovePositions(
 		const FOrigamiBirdBoardState& BoardState,
 		FIntPoint From,
 		FIntPoint To,
 		FOrigamiBirdFindTileDefinition FindTileDefinition,
-		FOrigamiBirdCanFallTileType CanRemoveTileType);
+		FOrigamiBirdCanClearTileType CanClearByEffectTileType);
 };

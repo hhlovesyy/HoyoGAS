@@ -92,6 +92,32 @@ namespace
 			return false;
 		}
 	}
+
+	bool ValidateTileDefinitionConfig(const FOrigamiBirdTileDefinitionRow& Definition, FString& OutError)
+	{
+		if (Definition.TileType == EOrigamiBirdTileType::None)
+		{
+			OutError = TEXT("TileType must not be None");
+			return false;
+		}
+
+		if (Definition.CapabilityMask == 0)
+		{
+			OutError = TEXT("CapabilityMask is empty");
+			return false;
+		}
+
+		const EOrigamiBirdTileCapability Capabilities = static_cast<EOrigamiBirdTileCapability>(Definition.CapabilityMask);
+		if (EnumHasAnyFlags(Capabilities, EOrigamiBirdTileCapability::RandomSpawnable)
+			&& (!EnumHasAnyFlags(Capabilities, EOrigamiBirdTileCapability::Matchable)
+				|| !EnumHasAnyFlags(Capabilities, EOrigamiBirdTileCapability::AffectedByGravity)))
+		{
+			OutError = TEXT("RandomSpawnable requires Matchable and AffectedByGravity");
+			return false;
+		}
+
+		return true;
+	}
 }
 
 void UOrigamiBirdMatchGameObject::Initialize(const FOrigamiBirdMatchStartParams& InStartParams)
@@ -141,6 +167,23 @@ void UOrigamiBirdMatchGameObject::Initialize(const FOrigamiBirdMatchStartParams&
 	}
 
 	RebuildTileDefinitionMap();
+	for (const FOrigamiBirdTileDefinitionRow& Definition : StartParams.TileDefinitions)
+	{
+		FString TileDefinitionError;
+		if (!ValidateTileDefinitionConfig(Definition, TileDefinitionError))
+		{
+			UE_LOG(
+				LogOrigamiBirdMatch,
+				Error,
+				TEXT("Initialize failed: TileDefinition for TileType=%d is invalid: %s"),
+				static_cast<int32>(Definition.TileType),
+				*TileDefinitionError);
+			ResetInitializeFailureState(false);
+			return;
+		}
+	}
+
+	bool bHasRandomSpawnableAvailableTileType = false;
 	for (const EOrigamiBirdTileType TileType : StartParams.AvailableTileTypes)
 	{
 		if (TileType == EOrigamiBirdTileType::None || !FindTileDefinitionInternal(TileType))
@@ -153,6 +196,18 @@ void UOrigamiBirdMatchGameObject::Initialize(const FOrigamiBirdMatchStartParams&
 			ResetInitializeFailureState(false);
 			return;
 		}
+
+		bHasRandomSpawnableAvailableTileType |= CanGenerateRandomTileType(TileType);
+	}
+
+	if (!bHasRandomSpawnableAvailableTileType)
+	{
+		UE_LOG(
+			LogOrigamiBirdMatch,
+			Error,
+			TEXT("Initialize failed: AvailableTileTypes does not contain any tile type with random generation capabilities."));
+		ResetInitializeFailureState(false);
+		return;
 	}
 	StartParams.BoardWidth = FMath::Clamp(StartParams.BoardWidth, 3, 12);
 	StartParams.BoardHeight = FMath::Clamp(StartParams.BoardHeight, 3, 12);
@@ -211,9 +266,9 @@ const FOrigamiBirdTileDefinitionRow* UOrigamiBirdMatchGameObject::FindTileDefini
 	return TileDefinitionsByType.Find(TileType);
 }
 
-const FOrigamiBirdTileDefinitionRow* UOrigamiBirdMatchGameObject::FindTileDefinitionForRule(
+const FOrigamiBirdTileDefinitionRow* UOrigamiBirdMatchGameObject::FindTileDefinitionForQuery(
 	EOrigamiBirdTileType TileType,
-	const TCHAR* RuleName) const
+	const TCHAR* QueryName) const
 {
 	if (const FOrigamiBirdTileDefinitionRow* Definition = FindTileDefinitionInternal(TileType))
 	{
@@ -223,10 +278,23 @@ const FOrigamiBirdTileDefinitionRow* UOrigamiBirdMatchGameObject::FindTileDefini
 	UE_LOG(
 		LogOrigamiBirdMatch,
 		Error,
-		TEXT("Missing TileDefinition for %s rule TileType=%d."),
-		RuleName,
+		TEXT("Missing TileDefinition for %s TileType=%d."),
+		QueryName,
 		static_cast<int32>(TileType));
 	return nullptr;
+}
+
+bool UOrigamiBirdMatchGameObject::HasTileCapability(
+	EOrigamiBirdTileType TileType,
+	EOrigamiBirdTileCapability Capability) const
+{
+	const FOrigamiBirdTileDefinitionRow* Definition = FindTileDefinitionForQuery(TileType, TEXT("capability query"));
+	if (!Definition)
+	{
+		return false;
+	}
+
+	return EnumHasAnyFlags(static_cast<EOrigamiBirdTileCapability>(Definition->CapabilityMask), Capability);
 }
 
 bool UOrigamiBirdMatchGameObject::FindTileDefinition(EOrigamiBirdTileType TileType, FOrigamiBirdTileDefinitionRow& OutDefinition) const
@@ -418,12 +486,7 @@ bool UOrigamiBirdMatchGameObject::CanMatchTileType(EOrigamiBirdTileType TileType
 		return false;
 	}
 
-	if (const FOrigamiBirdTileDefinitionRow* Definition = FindTileDefinitionForRule(TileType, TEXT("match")))
-	{
-		return Definition->bCanMatch;
-	}
-
-	return false;
+	return HasTileCapability(TileType, EOrigamiBirdTileCapability::Matchable);
 }
 
 bool UOrigamiBirdMatchGameObject::CanFallTileType(EOrigamiBirdTileType TileType) const
@@ -433,12 +496,7 @@ bool UOrigamiBirdMatchGameObject::CanFallTileType(EOrigamiBirdTileType TileType)
 		return true;
 	}
 
-	if (const FOrigamiBirdTileDefinitionRow* Definition = FindTileDefinitionForRule(TileType, TEXT("fall")))
-	{
-		return Definition->bCanFall;
-	}
-
-	return false;
+	return HasTileCapability(TileType, EOrigamiBirdTileCapability::AffectedByGravity);
 }
 
 bool UOrigamiBirdMatchGameObject::CanSwapTileType(EOrigamiBirdTileType TileType) const
@@ -448,22 +506,67 @@ bool UOrigamiBirdMatchGameObject::CanSwapTileType(EOrigamiBirdTileType TileType)
 		return false;
 	}
 
-	if (const FOrigamiBirdTileDefinitionRow* Definition = FindTileDefinitionForRule(TileType, TEXT("swap")))
+	return HasTileCapability(TileType, EOrigamiBirdTileCapability::Swappable);
+}
+
+bool UOrigamiBirdMatchGameObject::CanClearByMatchTileType(EOrigamiBirdTileType TileType) const
+{
+	if (TileType == EOrigamiBirdTileType::None)
 	{
-		return Definition->bCanSwap;
+		return false;
 	}
 
-	return false;
+	return HasTileCapability(TileType, EOrigamiBirdTileCapability::ClearableByMatch);
+}
+
+bool UOrigamiBirdMatchGameObject::CanClearByEffectTileType(EOrigamiBirdTileType TileType) const
+{
+	if (TileType == EOrigamiBirdTileType::None)
+	{
+		return false;
+	}
+
+	return HasTileCapability(TileType, EOrigamiBirdTileCapability::ClearableByEffect);
+}
+
+bool UOrigamiBirdMatchGameObject::CanGenerateRandomTileType(EOrigamiBirdTileType TileType) const
+{
+	if (TileType == EOrigamiBirdTileType::None)
+	{
+		return false;
+	}
+
+	const FOrigamiBirdTileDefinitionRow* Definition = FindTileDefinitionForQuery(TileType, TEXT("random generation query"));
+	if (!Definition)
+	{
+		return false;
+	}
+
+	const EOrigamiBirdTileCapability Capabilities = static_cast<EOrigamiBirdTileCapability>(Definition->CapabilityMask);
+	return EnumHasAnyFlags(Capabilities, EOrigamiBirdTileCapability::RandomSpawnable)
+		&& EnumHasAnyFlags(Capabilities, EOrigamiBirdTileCapability::Matchable)
+		&& EnumHasAnyFlags(Capabilities, EOrigamiBirdTileCapability::AffectedByGravity);
 }
 
 int32 UOrigamiBirdMatchGameObject::GetTileScoreValue(EOrigamiBirdTileType TileType) const
 {
-	if (const FOrigamiBirdTileDefinitionRow* Definition = FindTileDefinitionForRule(TileType, TEXT("score")))
+	if (TileType == EOrigamiBirdTileType::None)
 	{
-		return FMath::Max(0, Definition->ScoreValue);
+		return 0;
 	}
 
-	return 0;
+	const FOrigamiBirdTileDefinitionRow* Definition = FindTileDefinitionForQuery(TileType, TEXT("score query"));
+	if (!Definition)
+	{
+		return 0;
+	}
+
+	if (!EnumHasAnyFlags(static_cast<EOrigamiBirdTileCapability>(Definition->CapabilityMask), EOrigamiBirdTileCapability::Scoreable))
+	{
+		return 0;
+	}
+
+	return FMath::Max(0, Definition->ScoreValue);
 }
 
 bool UOrigamiBirdMatchGameObject::AreAdjacent(FIntPoint A, FIntPoint B) const
@@ -536,13 +639,21 @@ EOrigamiBirdTileType UOrigamiBirdMatchGameObject::GenerateRandomTileType()
 	{
 		const int32 Index = RandomStream.RandRange(0, StartParams.AvailableTileTypes.Num() - 1);
 		const EOrigamiBirdTileType CandidateType = StartParams.AvailableTileTypes[Index];
-		if (CanMatchTileType(CandidateType) && CanFallTileType(CandidateType))
+		if (CanGenerateRandomTileType(CandidateType))
 		{
 			return CandidateType;
 		}
 	}
 
-	UE_LOG(LogOrigamiBirdMatch, Error, TEXT("GenerateRandomTileType failed: no available tile type is both matchable and fallable."));
+	for (const EOrigamiBirdTileType CandidateType : StartParams.AvailableTileTypes)
+	{
+		if (CanGenerateRandomTileType(CandidateType))
+		{
+			return CandidateType;
+		}
+	}
+
+	UE_LOG(LogOrigamiBirdMatch, Error, TEXT("GenerateRandomTileType failed: no available tile type satisfies random generation capabilities."));
 	return EOrigamiBirdTileType::None;
 }
 
@@ -559,7 +670,7 @@ EOrigamiBirdTileType UOrigamiBirdMatchGameObject::GenerateRandomTileTypeExcept(E
 
 	for (const EOrigamiBirdTileType CandidateType : StartParams.AvailableTileTypes)
 	{
-		if (CandidateType != ExcludedType && CanMatchTileType(CandidateType) && CanFallTileType(CandidateType))
+		if (CandidateType != ExcludedType && CanGenerateRandomTileType(CandidateType))
 		{
 			return CandidateType;
 		}
@@ -694,7 +805,7 @@ bool UOrigamiBirdMatchGameObject::TrySwapTilesWithResult(FIntPoint From, FIntPoi
 				},
 				[this](EOrigamiBirdTileType TileType)
 				{
-					return CanFallTileType(TileType);
+					return CanClearByEffectTileType(TileType);
 				});
 
 		if (SwapEffectRemovedPositions.IsEmpty())
@@ -869,7 +980,11 @@ FOrigamiBirdMatchResolveResult UOrigamiBirdMatchGameObject::ResolveCurrentMatche
 				},
 				[this](EOrigamiBirdTileType TileType)
 				{
-					return CanFallTileType(TileType);
+					return CanClearByMatchTileType(TileType);
+				},
+				[this](EOrigamiBirdTileType TileType)
+				{
+					return CanClearByEffectTileType(TileType);
 				});
 		},
 		[this]()

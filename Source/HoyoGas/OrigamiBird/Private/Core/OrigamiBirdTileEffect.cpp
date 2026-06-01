@@ -17,7 +17,7 @@ namespace
 		const FOrigamiBirdTile* Tile = Context.BoardState.GetTile(Position);
 		return Tile
 			&& Tile->TileType != EOrigamiBirdTileType::None
-			&& Context.CanRemoveTileType(Tile->TileType);
+			&& Context.CanClearTileType(Tile->TileType);
 	}
 
 	void AddBoardPositions(const FOrigamiBirdTileEffectContext& Context, FOrigamiBirdTileEffectResult& InOutResult)

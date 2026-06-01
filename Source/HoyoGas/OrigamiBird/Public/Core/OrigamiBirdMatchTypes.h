@@ -22,6 +22,20 @@ enum class EOrigamiBirdTileType: uint8
 	SpecialClearFruit,
 };
 
+UENUM(BlueprintType, meta = (Bitflags, UseEnumValuesAsMaskValuesInEditor = "true"))
+enum class EOrigamiBirdTileCapability : uint8
+{
+	None = 0 UMETA(Hidden),
+	Matchable = 1 << 0,
+	AffectedByGravity = 1 << 1,
+	Swappable = 1 << 2,
+	ClearableByMatch = 1 << 3,
+	ClearableByEffect = 1 << 4,
+	RandomSpawnable = 1 << 5,
+	Scoreable = 1 << 6
+};
+ENUM_CLASS_FLAGS(EOrigamiBirdTileCapability);
+
 UENUM(BlueprintType)
 enum class EOrigamiBirdTileTriggerType : uint8
 {
@@ -84,19 +98,11 @@ struct HOYOGAS_API FOrigamiBirdTileDefinitionRow : public FTableRowBase
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "OrigamiBird")
 	FLinearColor DebugColor = FLinearColor::White;
 
-	// 是否能参与三消匹配。普通水果为 true，石头/空洞等障碍物为 false。
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "OrigamiBird")
-	bool bCanMatch = true;
+	// 用能力位描述玩法规则。这里不提供默认玩法能力，缺配置时应由初始化校验直接报错。
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "OrigamiBird", meta = (Bitmask, BitmaskEnum = "EOrigamiBirdTileCapability"))
+	int32 CapabilityMask = 0;
 
-	// 是否会在消除后受重力下落。普通水果为 true，固定障碍物/冰块底座通常为 false。
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "OrigamiBird")
-	bool bCanFall = true;
-
-	// 是否允许玩家拖动交换。普通水果为 true，固定障碍物通常为 false。
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "OrigamiBird")
-	bool bCanSwap = true;
-
-	// 单个方块被消除时的基础分。普通玩法可都配 10，特殊方块可更高。
+	// 单个方块被消除时的基础分。只有带 Scoreable 能力的格子才会实际计分。
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "OrigamiBird")
 	int32 ScoreValue = 10;
 
