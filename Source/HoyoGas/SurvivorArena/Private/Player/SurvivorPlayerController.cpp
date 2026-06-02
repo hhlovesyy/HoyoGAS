@@ -5,6 +5,7 @@
 #include "EnhancedInputSubsystems.h"
 #include "InputActionValue.h"
 #include "Player/SurvivorCharacter.h"
+#include "Player/SurvivorPlayerCameraManager.h"
 #include "Subsystems/MyPlayerUISubsystem.h"
 #include "UI/SurvivorUIConstants.h"
 #include "UIFrameworkTypes.h"
@@ -12,6 +13,7 @@
 ASurvivorPlayerController::ASurvivorPlayerController()
 {
 	bShowMouseCursor = true;
+	PlayerCameraManagerClass = ASurvivorPlayerCameraManager::StaticClass(); //只要写这个，就会自动把相机和角色关联起来，非常牛了
 }
 
 void ASurvivorPlayerController::BeginPlay()

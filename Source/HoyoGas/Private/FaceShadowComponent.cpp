@@ -2,6 +2,7 @@
 
 
 #include "FaceShadowComponent.h"
+#include "GameFramework/Character.h"
 #include "Engine/DirectionalLight.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Materials/MaterialInstanceDynamic.h"
@@ -70,22 +71,39 @@ UFaceShadowComponent::UFaceShadowComponent()
 	PrimaryComponentTick.TickGroup = TG_PostUpdateWork;
 }
 
+void UFaceShadowComponent::SetCharacterMeshComponent(USkeletalMeshComponent* InCharacterMesh)
+{
+	CharacterMesh = InCharacterMesh;
+	FaceMID = nullptr;
+}
+
 void UFaceShadowComponent::BeginPlay()
 {
 	Super::BeginPlay();
 
-	AActor* OwnerActor = GetOwner();
-	if (OwnerActor)
+	if (!CharacterMesh)
 	{
-		TArray<USkeletalMeshComponent*> AllMeshes;
-		OwnerActor->GetComponents<USkeletalMeshComponent>(AllMeshes);
-		for (USkeletalMeshComponent* Mesh : AllMeshes)
+		AActor* OwnerActor = GetOwner();
+		if (OwnerActor)
 		{
-			if (Mesh->GetName() == "GenshinMesh")
+			TArray<USkeletalMeshComponent*> AllMeshes;
+			OwnerActor->GetComponents<USkeletalMeshComponent>(AllMeshes);
+			for (USkeletalMeshComponent* Mesh : AllMeshes)
 			{
-				CharacterMesh = Mesh;
-				break;
+				if (Mesh->GetName() == "GenshinMesh")
+				{
+					CharacterMesh = Mesh;
+					break;
+				}
 			}
+		}
+	}
+
+	if (!CharacterMesh)
+	{
+		if (ACharacter* OwnerCharacter = Cast<ACharacter>(GetOwner()))
+		{
+			CharacterMesh = OwnerCharacter->GetMesh();
 		}
 	}
 

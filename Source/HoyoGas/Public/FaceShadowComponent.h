@@ -29,6 +29,9 @@ class HOYOGAS_API UFaceShadowComponent : public UActorComponent
 public:
 	UFaceShadowComponent();
 
+	UFUNCTION(BlueprintCallable, Category = "Face Shadow")
+	void SetCharacterMeshComponent(USkeletalMeshComponent* InCharacterMesh);
+
 protected:
 	virtual void BeginPlay() override;
 
@@ -68,8 +71,8 @@ public:
 	int32 MaterialIndex = 3;
 
 private:
-	UPROPERTY()
-	USkeletalMeshComponent* CharacterMesh = nullptr;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Face Shadow", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<USkeletalMeshComponent> CharacterMesh = nullptr;
 
 	UPROPERTY()
 	UMaterialInstanceDynamic* FaceMID = nullptr;

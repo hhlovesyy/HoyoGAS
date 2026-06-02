@@ -5,6 +5,7 @@
 #include "SurvivorPlayerController.generated.h"
 
 class ASurvivorCharacter;
+class ASurvivorPlayerCameraManager;
 class UInputAction;
 class UInputMappingContext;
 struct FInputActionValue;
