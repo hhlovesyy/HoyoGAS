@@ -8,6 +8,7 @@
 #include "GAS/SurvivorAbilitySystemComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Player/SurvivorPlayerState.h"
+#include "Weapons/SurvivorWeaponManagerComponent.h"
 
 ASurvivorCharacter::ASurvivorCharacter()
 {
@@ -56,6 +57,8 @@ ASurvivorCharacter::ASurvivorCharacter()
 
 	FaceShadowComponent = CreateDefaultSubobject<UFaceShadowComponent>(TEXT("FaceShadowComponent"));
 	FaceShadowComponent->SetCharacterMeshComponent(VisualCharacterMesh);
+
+	WeaponManagerComponent = CreateDefaultSubobject<USurvivorWeaponManagerComponent>(TEXT("WeaponManagerComponent"));
 }
 
 void ASurvivorCharacter::BeginPlay()
@@ -119,6 +122,11 @@ USceneComponent* ASurvivorCharacter::GetCameraPivot() const
 FVector ASurvivorCharacter::GetCameraPivotLocation() const
 {
 	return CameraPivot ? CameraPivot->GetComponentLocation() : GetActorLocation() + CameraPivotRelativeLocation;
+}
+
+USurvivorWeaponManagerComponent* ASurvivorCharacter::GetWeaponManagerComponent() const
+{
+	return WeaponManagerComponent;
 }
 
 USkeletalMeshComponent* ASurvivorCharacter::ResolvePrimaryVisualMesh() const

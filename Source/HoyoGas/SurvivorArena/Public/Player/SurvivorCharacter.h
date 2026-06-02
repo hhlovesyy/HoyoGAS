@@ -11,6 +11,7 @@ class USceneComponent;
 class UStaticMeshComponent;
 class USkeletalMeshComponent;
 class USurvivorAbilitySystemComponent;
+class USurvivorWeaponManagerComponent;
 
 UCLASS()
 class HOYOGAS_API ASurvivorCharacter : public ACharacter, public IAbilitySystemInterface
@@ -33,6 +34,7 @@ public:
 	UFaceShadowComponent* GetFaceShadowComponent() const;
 	USceneComponent* GetCameraPivot() const;
 	FVector GetCameraPivotLocation() const;
+	USurvivorWeaponManagerComponent* GetWeaponManagerComponent() const;
 
 protected:
 	void InitAbilityActorInfo();
@@ -59,6 +61,9 @@ protected:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "SurvivorArena|Visual", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UFaceShadowComponent> FaceShadowComponent;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Survivor|Weapons", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<USurvivorWeaponManagerComponent> WeaponManagerComponent;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "SurvivorArena|Visual", meta = (AllowPrivateAccess = "true"))
 	FName HeadAttachmentSocketName = TEXT("HeadDecalSocket");
