@@ -19,6 +19,13 @@ struct FSurvivorFirePatternContext
 	FVector ForwardDirection = FVector::ForwardVector;
 };
 
+UENUM(BlueprintType)
+enum class ESurvivorRadialAlignment : uint8
+{
+	CharacterForward,
+	WorldAxis
+};
+
 UCLASS(Abstract, BlueprintType, EditInlineNew, DefaultToInstanced)
 class HOYOGAS_API USurvivorFirePattern : public UObject
 {
@@ -48,4 +55,7 @@ public:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Survivor|Weapon")
 	int32 DirectionCount = 4;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Survivor|Weapon")
+	ESurvivorRadialAlignment RadialAlignment = ESurvivorRadialAlignment::CharacterForward;
 };

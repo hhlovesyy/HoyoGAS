@@ -21,14 +21,19 @@ void USurvivorRadialFirePattern::GenerateDirections_Implementation(const FSurviv
 {
 	const int32 SafeDirectionCount = FMath::Max(1, DirectionCount);
 
-	FVector BaseDirection = Context.ForwardDirection;
-	BaseDirection.Z = 0.0f;
-	if (!BaseDirection.Normalize())
+	float BaseAngleRadians = 0.0f;
+	if (RadialAlignment == ESurvivorRadialAlignment::CharacterForward)
 	{
-		BaseDirection = FVector::ForwardVector;
+		FVector BaseDirection = Context.ForwardDirection;
+		BaseDirection.Z = 0.0f;
+		if (!BaseDirection.Normalize())
+		{
+			BaseDirection = FVector::ForwardVector;
+		}
+
+		BaseAngleRadians = FMath::Atan2(BaseDirection.Y, BaseDirection.X);
 	}
 
-	const float BaseAngleRadians = FMath::Atan2(BaseDirection.Y, BaseDirection.X);
 	const float AngleStepRadians = (2.0f * PI) / static_cast<float>(SafeDirectionCount);
 
 	OutDirections.Reserve(OutDirections.Num() + SafeDirectionCount);
