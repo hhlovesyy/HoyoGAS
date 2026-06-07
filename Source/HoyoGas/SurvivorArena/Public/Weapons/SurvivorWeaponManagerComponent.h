@@ -1,10 +1,23 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "GameplayAbilitySpecHandle.h"
 #include "Components/ActorComponent.h"
 #include "SurvivorWeaponManagerComponent.generated.h"
 
+class UAbilitySystemComponent;
 class USurvivorWeaponDefinition;
+
+USTRUCT()
+struct FSurvivorGrantedWeaponEntry
+{
+	GENERATED_BODY()
+
+	UPROPERTY()
+	TObjectPtr<USurvivorWeaponDefinition> WeaponDefinition = nullptr;
+
+	FGameplayAbilitySpecHandle WeaponAbilityHandle;
+};
 
 UCLASS(ClassGroup = (Survivor), meta = (BlueprintSpawnableComponent))
 class HOYOGAS_API USurvivorWeaponManagerComponent : public UActorComponent
@@ -18,26 +31,20 @@ public:
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
 	UFUNCTION(BlueprintCallable, Category = "Survivor|Weapon")
-	void StartDebugWeapon();
+	bool GrantWeapon(USurvivorWeaponDefinition* WeaponDefinition);
 
 	UFUNCTION(BlueprintCallable, Category = "Survivor|Weapon")
-	void StopDebugWeapon();
+	bool RemoveWeapon(USurvivorWeaponDefinition* WeaponDefinition);
 
-	UFUNCTION(BlueprintCallable, Category = "Survivor|Weapon")
-	void HandleDebugWeaponFire();
-
-	UFUNCTION(BlueprintCallable, Category = "Survivor|Weapon")
-	void DrawDebugFireDirections(const TArray<FVector>& Directions, float LineLength);
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Survivor|Weapon")
-	bool bAutoStartDebugWeapon = true;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Survivor|Weapon")
-	bool bEnableWeaponDebug = true;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Survivor|Weapon")
-	TObjectPtr<USurvivorWeaponDefinition> DebugWeaponDefinition = nullptr;
+	UFUNCTION(BlueprintPure, Category = "Survivor|Weapon")
+	bool HasWeapon(const USurvivorWeaponDefinition* WeaponDefinition) const;
 
 protected:
-	FTimerHandle DebugWeaponTimerHandle;
+	UAbilitySystemComponent* GetOwningAbilitySystemComponent() const;
+	FSurvivorGrantedWeaponEntry* FindGrantedWeaponEntry(USurvivorWeaponDefinition* WeaponDefinition);
+	const FSurvivorGrantedWeaponEntry* FindGrantedWeaponEntry(const USurvivorWeaponDefinition* WeaponDefinition) const;
+	void RemoveAllGrantedWeapons();
+
+	UPROPERTY()
+	TArray<FSurvivorGrantedWeaponEntry> GrantedWeapons;
 };

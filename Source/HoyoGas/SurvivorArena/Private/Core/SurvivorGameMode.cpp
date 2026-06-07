@@ -4,10 +4,14 @@
 #include "Core/SurvivorArenaSettings.h"
 #include "Core/SurvivorGameState.h"
 #include "Core/SurvivorRunLauncherSubsystem.h"
+#include "Engine/DataTable.h"
 #include "Engine/World.h"
+#include "GAS/SurvivorAbilitySet.h"
 #include "Player/SurvivorCharacter.h"
 #include "Player/SurvivorPlayerController.h"
 #include "Player/SurvivorPlayerState.h"
+#include "Weapons/SurvivorWeaponDefinition.h"
+#include "Weapons/SurvivorWeaponManagerComponent.h"
 
 /*
 *在多人联机游戏中，GameMode 资产和实例只存在于服务器端。任何客户端的电脑内存里，GetGameMode() 返回的永远是 nullptr。
@@ -55,6 +59,12 @@ void ASurvivorGameMode::BeginPlay()
 	StartSurvivorRun(StartConfig);
 }
 
+void ASurvivorGameMode::HandleStartingNewPlayer_Implementation(APlayerController* NewPlayer)
+{
+	Super::HandleStartingNewPlayer_Implementation(NewPlayer);
+	GrantStartingLoadoutToPlayer(NewPlayer);
+}
+
 void ASurvivorGameMode::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
@@ -77,6 +87,7 @@ void ASurvivorGameMode::StartSurvivorRun(const FSurvivorRunStartConfig& Config)
 {
 	CurrentRunConfig = Config;
 	RunStartTimeSeconds = GetWorld() ? GetWorld()->GetTimeSeconds() : 0.0f;
+	LoadoutGrantedPlayers.Reset();
 
 	UE_LOG(
 		LogSurvivorArena,
@@ -94,6 +105,7 @@ void ASurvivorGameMode::StartSurvivorRun(const FSurvivorRunStartConfig& Config)
 
 	SetRunState(ESurvivorRunState::Preparing);
 	SetRunState(ESurvivorRunState::InRun);
+	GrantStartingLoadoutToExistingPlayers();
 }
 
 void ASurvivorGameMode::EndSurvivorRun(bool bVictory)
@@ -118,4 +130,158 @@ void ASurvivorGameMode::SetRunState(ESurvivorRunState NewRunState)
 	}
 
 	UE_LOG(LogSurvivorArena, Log, TEXT("SurvivorGameMode state transition: %d -> %d"), static_cast<int32>(PreviousRunState), static_cast<int32>(CurrentRunState));
+}
+
+const FSurvivorCharacterDefinitionRow* ASurvivorGameMode::ResolveCharacterDefinitionRow(FName CharacterId) const
+{
+	const USurvivorArenaSettings* Settings = GetDefault<USurvivorArenaSettings>();
+	if (!Settings)
+	{
+		UE_LOG(LogSurvivorArena, Error, TEXT("ResolveCharacterDefinitionRow failed because SurvivorArenaSettings is null."));
+		return nullptr;
+	}
+
+	UDataTable* CharacterDefinitionTable = Settings->CharacterDefinitionTable.LoadSynchronous();
+	if (!CharacterDefinitionTable)
+	{
+		UE_LOG(LogSurvivorArena, Error, TEXT("ResolveCharacterDefinitionRow failed because CharacterDefinitionTable is not configured."));
+		return nullptr;
+	}
+
+	if (CharacterId.IsNone())
+	{
+		UE_LOG(LogSurvivorArena, Error, TEXT("ResolveCharacterDefinitionRow failed because CharacterId is None."));
+		return nullptr;
+	}
+
+	const FSurvivorCharacterDefinitionRow* CharacterDefinition = CharacterDefinitionTable->FindRow<FSurvivorCharacterDefinitionRow>(
+		CharacterId,
+		TEXT("ASurvivorGameMode::ResolveCharacterDefinitionRow"));
+	if (!CharacterDefinition)
+	{
+		UE_LOG(LogSurvivorArena, Error, TEXT("ResolveCharacterDefinitionRow failed because CharacterId=%s was not found in CharacterDefinitionTable."),
+			*CharacterId.ToString());
+		return nullptr;
+	}
+
+	return CharacterDefinition;
+}
+
+void ASurvivorGameMode::GrantStartingLoadoutToExistingPlayers()
+{
+	//看起来这个代码是支持多人组队的，由服务器的GameMode给所有人再开局赋予GameAbility和Weapon
+	for (FConstPlayerControllerIterator Iterator = GetWorld()->GetPlayerControllerIterator(); Iterator; ++Iterator)
+	{
+		GrantStartingLoadoutToPlayer(Iterator->Get());
+	}
+}
+
+bool ASurvivorGameMode::GrantStartingLoadoutToPlayer(APlayerController* PlayerController)
+{
+	if (!PlayerController)
+	{
+		return false;
+	}
+
+	const TWeakObjectPtr<APlayerController> PlayerControllerKey(PlayerController);
+	if (LoadoutGrantedPlayers.Contains(PlayerControllerKey))
+	{
+		return true;
+	}
+
+	const FSurvivorCharacterDefinitionRow* CharacterDefinition = ResolveCharacterDefinitionRow(CurrentRunConfig.CharacterId);
+	if (!CharacterDefinition)
+	{
+		return false;
+	}
+
+	ASurvivorPlayerState* SurvivorPlayerState = PlayerController->GetPlayerState<ASurvivorPlayerState>();
+	ASurvivorCharacter* SurvivorCharacter = Cast<ASurvivorCharacter>(PlayerController->GetPawn());
+	if (!SurvivorPlayerState || !SurvivorCharacter)
+	{
+		UE_LOG(LogSurvivorArena, Error, TEXT("GrantStartingLoadoutToPlayer failed because SurvivorPlayerState or SurvivorCharacter is missing. Controller=%s Pawn=%s PlayerState=%s"),
+			*GetNameSafe(PlayerController),
+			*GetNameSafe(PlayerController->GetPawn()),
+			*GetNameSafe(PlayerController->PlayerState));
+		return false;
+	}
+
+	UAbilitySystemComponent* PlayerASC = SurvivorPlayerState->GetAbilitySystemComponent();
+	if (!PlayerASC)
+	{
+		UE_LOG(LogSurvivorArena, Error, TEXT("GrantStartingLoadoutToPlayer failed because Player ASC is null. Controller=%s PlayerState=%s"),
+			*GetNameSafe(PlayerController),
+			*GetNameSafe(SurvivorPlayerState));
+		return false;
+	}
+
+	TArray<USurvivorWeaponDefinition*> StartingWeaponDefinitions;
+	StartingWeaponDefinitions.Reserve(CharacterDefinition->StartingWeapons.Num());
+
+	for (USurvivorAbilitySet* AbilitySet : CharacterDefinition->StartingAbilitySets)
+	{
+		if (!AbilitySet)
+		{
+			UE_LOG(LogSurvivorArena, Error, TEXT("CharacterDefinition contains a null StartingAbilitySet. CharacterId=%s"), *CurrentRunConfig.CharacterId.ToString());
+			return false;
+		}
+	}
+
+	for (const TSoftObjectPtr<USurvivorWeaponDefinition>& WeaponSoftPtr : CharacterDefinition->StartingWeapons)
+	{
+		USurvivorWeaponDefinition* WeaponDefinition = WeaponSoftPtr.LoadSynchronous();
+		if (!WeaponDefinition)
+		{
+			UE_LOG(LogSurvivorArena, Error, TEXT("CharacterDefinition contains an unloaded or null StartingWeapon. CharacterId=%s"),
+				*CurrentRunConfig.CharacterId.ToString());
+			return false;
+		}
+
+		FString ValidationError;
+		if (!WeaponDefinition->ValidateRuntimeConfiguration(&ValidationError))
+		{
+			UE_LOG(LogSurvivorArena, Error, TEXT("StartingWeapon is invalid. CharacterId=%s Weapon=%s Error=%s"),
+				*CurrentRunConfig.CharacterId.ToString(),
+				*GetNameSafe(WeaponDefinition),
+				*ValidationError);
+			return false;
+		}
+
+		StartingWeaponDefinitions.Add(WeaponDefinition);
+	}
+
+	for (USurvivorAbilitySet* AbilitySet : CharacterDefinition->StartingAbilitySets)
+	{
+		AbilitySet->GiveToAbilitySystem(PlayerASC, SurvivorCharacter);
+	}
+
+	USurvivorWeaponManagerComponent* WeaponManager = SurvivorCharacter->GetWeaponManagerComponent();
+	if (!WeaponManager)
+	{
+		UE_LOG(LogSurvivorArena, Error, TEXT("GrantStartingLoadoutToPlayer failed because WeaponManagerComponent is null. Character=%s"),
+			*GetNameSafe(SurvivorCharacter));
+		return false;
+	}
+
+	for (USurvivorWeaponDefinition* WeaponDefinition : StartingWeaponDefinitions)
+	{
+		if (!WeaponManager->GrantWeapon(WeaponDefinition))
+		{
+			UE_LOG(LogSurvivorArena, Error, TEXT("GrantStartingLoadoutToPlayer failed to grant StartingWeapon. Controller=%s CharacterId=%s Weapon=%s"),
+				*GetNameSafe(PlayerController),
+				*CurrentRunConfig.CharacterId.ToString(),
+				*GetNameSafe(WeaponDefinition));
+			return false;
+		}
+	}
+
+	LoadoutGrantedPlayers.Add(PlayerControllerKey);
+
+	UE_LOG(LogSurvivorArena, Log, TEXT("Granted starting loadout. Controller=%s CharacterId=%s WeaponCount=%d AbilitySetCount=%d"),
+		*GetNameSafe(PlayerController),
+		*CurrentRunConfig.CharacterId.ToString(),
+		CharacterDefinition->StartingWeapons.Num(),
+		CharacterDefinition->StartingAbilitySets.Num());
+
+	return true;
 }

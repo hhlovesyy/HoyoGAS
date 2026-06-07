@@ -25,6 +25,9 @@ public:
 
 protected:
 	void HandleHealthChanged(const FOnAttributeChangeData& ChangeData);
+	void PlayHitFeedback();
+	void ResetHitFeedback();
+	void DrawHealthDebug(float CurrentHealth) const;
 	void Die();
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Survivor|Enemy", meta = (AllowPrivateAccess = "true"))
@@ -42,8 +45,21 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Survivor|Enemy")
 	bool bDrawDebugHealth = true;
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Survivor|Enemy")
+	bool bEnableHitFeedback = true;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Survivor|Enemy")
+	float HitFeedbackDuration = 0.08f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Survivor|Enemy")
+	float HitFeedbackScaleMultiplier = 1.12f;
+
 	UPROPERTY(Transient)
 	bool bIsDead = false;
 
+	UPROPERTY(Transient)
+	FVector VisualMeshDefaultScale = FVector(1.0f, 1.0f, 1.0f);
+
 	FDelegateHandle HealthChangedDelegateHandle;
+	FTimerHandle HitFeedbackTimerHandle;
 };

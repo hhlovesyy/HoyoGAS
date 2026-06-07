@@ -1,4 +1,4 @@
-#include "Weapons/SurvivorProjectileBase.h"
+﻿#include "Weapons/SurvivorProjectileBase.h"
 
 #include "AbilitySystemInterface.h"
 #include "AbilitySystemComponent.h"
@@ -14,10 +14,8 @@ ASurvivorProjectileBase::ASurvivorProjectileBase()
 	SceneRoot = CreateDefaultSubobject<USceneComponent>(TEXT("SceneRoot"));
 	SetRootComponent(SceneRoot);
 	
-	//UProjectileMovementComponent (简称 PMC) 是虚幻引擎中专门用于处理非角色类、具有弹道特性的物体移动的内置组件。它继承自 UMovementComponent
-	//简单来说，如果 CharacterMovementComponent 是专门用来伺候“长着两条腿、受输入控制的活人”的，那么 ProjectileMovementComponent 就是专门用来伺候“被扔出去、靠惯性和物理规则飞行的死物”的。
-	//PMC 在底层最大的价值在于它封装了极其严谨的移动与碰撞清算逻辑（SafeMoveUpdatedComponent）。
-	//当子弹每一帧往前推进时，PMC 会带着你注册的那个真实的 Collision Component 去做物理扫模（Sweep）。一旦在这一帧的移动路线上碰到了东西，它会自动计算出击中点的法线（Normal）、剩余的飞行时间，并精准地停在物体表面，从而触发 OnComponentHit 或 OnComponentBeginOverlap，绝对不会嵌进墙里。
+	//UProjectileMovementComponent (绠€绉?PMC) 鏄櫄骞诲紩鎿庝腑涓撻棬鐢ㄤ簬澶勭悊闈炶鑹茬被銆佸叿鏈夊脊閬撶壒鎬х殑鐗╀綋绉诲姩鐨勫唴缃粍浠躲€傚畠缁ф壙鑷?UMovementComponent
+	//绠€鍗曟潵璇达紝濡傛灉 CharacterMovementComponent 鏄笓闂ㄧ敤鏉ヤ己鍊欌€滈暱鐫€涓ゆ潯鑵裤€佸彈杈撳叆鎺у埗鐨勬椿浜衡€濈殑锛岄偅涔?ProjectileMovementComponent 灏辨槸涓撻棬鐢ㄦ潵浼哄€欌€滆鎵斿嚭鍘汇€侀潬鎯€у拰鐗╃悊瑙勫垯椋炶鐨勬鐗┾€濈殑銆?	//PMC 鍦ㄥ簳灞傛渶澶х殑浠峰€煎湪浜庡畠灏佽浜嗘瀬鍏朵弗璋ㄧ殑绉诲姩涓庣鎾炴竻绠楅€昏緫锛圫afeMoveUpdatedComponent锛夈€?	//褰撳瓙寮规瘡涓€甯у線鍓嶆帹杩涙椂锛孭MC 浼氬甫鐫€浣犳敞鍐岀殑閭ｄ釜鐪熷疄鐨?Collision Component 鍘诲仛鐗╃悊鎵ā锛圫weep锛夈€備竴鏃﹀湪杩欎竴甯х殑绉诲姩璺嚎涓婄鍒颁簡涓滆タ锛屽畠浼氳嚜鍔ㄨ绠楀嚭鍑讳腑鐐圭殑娉曠嚎锛圢ormal锛夈€佸墿浣欑殑椋炶鏃堕棿锛屽苟绮惧噯鍦板仠鍦ㄧ墿浣撹〃闈紝浠庤€岃Е鍙?OnComponentHit 鎴?OnComponentBeginOverlap锛岀粷瀵逛笉浼氬祵杩涘閲屻€?	ProjectileMovementComponent = CreateDefaultSubobject<UProjectileMovementComponent>(TEXT("ProjectileMovementComponent"));
 	ProjectileMovementComponent = CreateDefaultSubobject<UProjectileMovementComponent>(TEXT("ProjectileMovementComponent"));
 	ProjectileMovementComponent->InitialSpeed = 0.0f;
 	ProjectileMovementComponent->MaxSpeed = 0.0f;
@@ -29,36 +27,31 @@ ASurvivorProjectileBase::ASurvivorProjectileBase()
 
 void ASurvivorProjectileBase::SetPrimaryCollisionComponent(UPrimitiveComponent* InComponent)
 {
-	//这个基类不强制创建任何特定的碰撞体，而是把 SceneRoot 作为最外层根节点。它暴露了 SetPrimaryCollisionComponent，允许在蓝图里随意添加碰撞体（比如加个 Box），然后调用这个节点把它注册为主要的“碰撞感应器”。
-	//它还会自动帮你处理事件绑定的“擦屁股”工作（移除旧的，绑定新的），并且动态把 ProjectileMovementComponent 的更新目标转移到新的碰撞体上。
-	//SetUpdatedComponent：在 UE5 中，UProjectileMovementComponent (简称 PMC) 其实并不直接移动 AActor 本身。它像是一台“独立的外挂发动机”，你需要明确告诉这台发动机：“你应该推着哪个车架子走？”——这个被推的车架子，就是 UpdatedComponent。
-	//默认情况下，PMC 会推着 Actor 的根组件 (RootComponent，在这里就是那个没有任何体积的数学点 SceneRoot) 移动。但这样做会引发一个极其致命的 Bug：当 PMC 推着 SceneRoot 进行高速移动时，底层的物理扫模（Sweep）会以 SceneRoot 的形状（一个体积为 0 的点）去进行碰撞检测。这会导致子弹极易穿透薄墙（这就是著名的 Tunneling 穿模效应），哪怕子弹的子层级挂着一个巨大的 Box 碰撞体，因为物理引擎在 Sweep 时根本不看子组件的体积。
-	//所以，ProjectileMovementComponent->SetUpdatedComponent(PrimaryCollisionComponent); 这句话的意思是：“把发动机的受力点，从没有体积的根节点，转移到真正的碰撞体身上。” 这样，物理引擎就会用这个碰撞体的实际长宽高等包围盒数据去进行扫模检测，确保极速飞行时绝对不会漏判。
-	
-	// 1. 相同组件直接拦截（避免重复绑定）
+	//杩欎釜鍩虹被涓嶅己鍒跺垱寤轰换浣曠壒瀹氱殑纰版挒浣擄紝鑰屾槸鎶?SceneRoot 浣滀负鏈€澶栧眰鏍硅妭鐐广€傚畠鏆撮湶浜?SetPrimaryCollisionComponent锛屽厑璁稿湪钃濆浘閲岄殢鎰忔坊鍔犵鎾炰綋锛堟瘮濡傚姞涓?Box锛夛紝鐒跺悗璋冪敤杩欎釜鑺傜偣鎶婂畠娉ㄥ唽涓轰富瑕佺殑鈥滅鎾炴劅搴斿櫒鈥濄€?	//瀹冭繕浼氳嚜鍔ㄥ府浣犲鐞嗕簨浠剁粦瀹氱殑鈥滄摝灞佽偂鈥濆伐浣滐紙绉婚櫎鏃х殑锛岀粦瀹氭柊鐨勶級锛屽苟涓斿姩鎬佹妸 ProjectileMovementComponent 鐨勬洿鏂扮洰鏍囪浆绉诲埌鏂扮殑纰版挒浣撲笂銆?	//SetUpdatedComponent锛氬湪 UE5 涓紝UProjectileMovementComponent (绠€绉?PMC) 鍏跺疄骞朵笉鐩存帴绉诲姩 AActor 鏈韩銆傚畠鍍忔槸涓€鍙扳€滅嫭绔嬬殑澶栨寕鍙戝姩鏈衡€濓紝浣犻渶瑕佹槑纭憡璇夎繖鍙板彂鍔ㄦ満锛氣€滀綘搴旇鎺ㄧ潃鍝釜杞︽灦瀛愯蛋锛熲€濃€斺€旇繖涓鎺ㄧ殑杞︽灦瀛愶紝灏辨槸 UpdatedComponent銆?	//榛樿鎯呭喌涓嬶紝PMC 浼氭帹鐫€ Actor 鐨勬牴缁勪欢 (RootComponent锛屽湪杩欓噷灏辨槸閭ｄ釜娌℃湁浠讳綍浣撶Н鐨勬暟瀛︾偣 SceneRoot) 绉诲姩銆備絾杩欐牱鍋氫細寮曞彂涓€涓瀬鍏惰嚧鍛界殑 Bug锛氬綋 PMC 鎺ㄧ潃 SceneRoot 杩涜楂橀€熺Щ鍔ㄦ椂锛屽簳灞傜殑鐗╃悊鎵ā锛圫weep锛変細浠?SceneRoot 鐨勫舰鐘讹紙涓€涓綋绉负 0 鐨勭偣锛夊幓杩涜纰版挒妫€娴嬨€傝繖浼氬鑷村瓙寮规瀬鏄撶┛閫忚杽澧欙紙杩欏氨鏄憲鍚嶇殑 Tunneling 绌挎ā鏁堝簲锛夛紝鍝€曞瓙寮圭殑瀛愬眰绾ф寕鐫€涓€涓法澶х殑 Box 纰版挒浣擄紝鍥犱负鐗╃悊寮曟搸鍦?Sweep 鏃舵牴鏈笉鐪嬪瓙缁勪欢鐨勪綋绉€?	//鎵€浠ワ紝ProjectileMovementComponent->SetUpdatedComponent(PrimaryCollisionComponent); 杩欏彞璇濈殑鎰忔€濇槸锛氣€滄妸鍙戝姩鏈虹殑鍙楀姏鐐癸紝浠庢病鏈変綋绉殑鏍硅妭鐐癸紝杞Щ鍒扮湡姝ｇ殑纰版挒浣撹韩涓娿€傗€?杩欐牱锛岀墿鐞嗗紩鎿庡氨浼氱敤杩欎釜纰版挒浣撶殑瀹為檯闀垮楂樼瓑鍖呭洿鐩掓暟鎹幓杩涜鎵ā妫€娴嬶紝纭繚鏋侀€熼琛屾椂缁濆涓嶄細婕忓垽銆?	
+	// 1. 鐩稿悓缁勪欢鐩存帴鎷︽埅锛堥伩鍏嶉噸澶嶇粦瀹氾級
 	if (PrimaryCollisionComponent == InComponent)
 	{
 		return;
 	}
 
-	// 2. 剥离旧状态（清理现场）
+	// 2. 鍓ョ鏃х姸鎬侊紙娓呯悊鐜板満锛?	if (PrimaryCollisionComponent)
 	if (PrimaryCollisionComponent)
 	{
 		PrimaryCollisionComponent->OnComponentBeginOverlap.RemoveDynamic(this, &ASurvivorProjectileBase::OnPrimaryCollisionBeginOverlap);
 	}
 
-	// 3. 状态更新
+	// 3. 鐘舵€佹洿鏂?	PrimaryCollisionComponent = InComponent;
 	PrimaryCollisionComponent = InComponent;
-	USceneComponent* NewMoveTarget = SceneRoot; // 兜底策略：如果没碰撞体，发动机就退化去推 Root
+	USceneComponent* NewMoveTarget = SceneRoot; // 鍏滃簳绛栫暐锛氬鏋滄病纰版挒浣擄紝鍙戝姩鏈哄氨閫€鍖栧幓鎺?Root
 
-	// 4. 绑定新状态
+	// 4. 缁戝畾鏂扮姸鎬?	if (PrimaryCollisionComponent)
 	if (PrimaryCollisionComponent)
 	{
 		PrimaryCollisionComponent->OnComponentBeginOverlap.AddDynamic(this, &ASurvivorProjectileBase::OnPrimaryCollisionBeginOverlap);
-		NewMoveTarget = PrimaryCollisionComponent; // 有真实碰撞体，就让发动机推真实碰撞体
+		NewMoveTarget = PrimaryCollisionComponent; // 鏈夌湡瀹炵鎾炰綋锛屽氨璁╁彂鍔ㄦ満鎺ㄧ湡瀹炵鎾炰綋
 	}
 
-	// 5. 统一更新发动机的驱动目标
+	// 5. 缁熶竴鏇存柊鍙戝姩鏈虹殑椹卞姩鐩爣
 	if (ProjectileMovementComponent)
 	{
 		ProjectileMovementComponent->SetUpdatedComponent(NewMoveTarget);
@@ -72,12 +65,16 @@ void ASurvivorProjectileBase::InitializeProjectile(
 	float Speed,
 	float LifeSeconds)
 {
-	//玩家释放技能（Gameplay Ability）时，算出伤害（比如基础 10 点 + 50% 攻击力），把这个算好的伤害打包成一个包裹（FGameplayEffectSpecHandle）。
-	//调用 InitializeProjectile 时，把这个包裹（SpecHandle）和是谁发出的（SourceASC）塞给投射物。
-	//签收： 投射物在天上飞，只要撞到了敌人，触发 ApplyDamageSpecToActor。它完全不管伤害是多少，直接把怀里的包裹塞进敌人的 TargetASC 里。这样，所有的伤害修正、暴击计算逻辑都在发射者身上完成了，投射物类极其干净。
+	//鐜╁閲婃斁鎶€鑳斤紙Gameplay Ability锛夋椂锛岀畻鍑轰激瀹筹紙姣斿鍩虹 10 鐐?+ 50% 鏀诲嚮鍔涳級锛屾妸杩欎釜绠楀ソ鐨勪激瀹虫墦鍖呮垚涓€涓寘瑁癸紙FGameplayEffectSpecHandle锛夈€?	//璋冪敤 InitializeProjectile 鏃讹紝鎶婅繖涓寘瑁癸紙SpecHandle锛夊拰鏄皝鍙戝嚭鐨勶紙SourceASC锛夊缁欐姇灏勭墿銆?	//绛炬敹锛?鎶曞皠鐗╁湪澶╀笂椋烇紝鍙鎾炲埌浜嗘晫浜猴紝瑙﹀彂 ApplyDamageSpecToActor銆傚畠瀹屽叏涓嶇浼ゅ鏄灏戯紝鐩存帴鎶婃€€閲岀殑鍖呰９濉炶繘鏁屼汉鐨?TargetASC 閲屻€傝繖鏍凤紝鎵€鏈夌殑浼ゅ淇銆佹毚鍑昏绠楅€昏緫閮藉湪鍙戝皠鑰呰韩涓婂畬鎴愪簡锛屾姇灏勭墿绫绘瀬鍏跺共鍑€銆?	SourceASC = InSourceASC;
 	SourceASC = InSourceASC;
 	DamageEffectSpecHandle = InDamageSpecHandle;
 	HitActors.Reset();
+	bProjectileInitialized = true;
+
+	if (!PrimaryCollisionComponent)
+	{
+		UE_LOG(LogSurvivorArena, Error, TEXT("Projectile %s has no PrimaryCollisionComponent. Assign a collision primitive and call SetPrimaryCollisionComponent before firing."), *GetNameSafe(this));
+	}
 
 	FVector SafeDirection = Direction;
 	SafeDirection.Z = Direction.Z;
@@ -91,9 +88,11 @@ void ASurvivorProjectileBase::InitializeProjectile(
 	if (ProjectileMovementComponent)
 	{
 		const float SafeSpeed = FMath::Max(0.0f, Speed);
+		ProjectileMovementComponent->SetUpdatedComponent(PrimaryCollisionComponent ? PrimaryCollisionComponent : SceneRoot);
 		ProjectileMovementComponent->Velocity = SafeDirection * SafeSpeed;
 		ProjectileMovementComponent->InitialSpeed = SafeSpeed;
 		ProjectileMovementComponent->MaxSpeed = SafeSpeed;
+		ProjectileMovementComponent->UpdateComponentVelocity();
 		ProjectileMovementComponent->Activate(true);
 	}
 
@@ -125,6 +124,11 @@ void ASurvivorProjectileBase::HandleProjectileOverlap(
 	bool bFromSweep,
 	const FHitResult& SweepResult)
 {
+	if (!bProjectileInitialized)
+	{
+		return;
+	}
+
 	if (!CanHitActor(OtherActor))
 	{
 		return;
@@ -135,13 +139,18 @@ void ASurvivorProjectileBase::HandleProjectileOverlap(
 		return;
 	}
 
-	HitActors.Add(OtherActor); //这个机制是做防止一个角色解算多次碰撞伤害的，防止抖动
 	HandleProjectileImpact(OtherActor, SweepResult);
 }
 
 void ASurvivorProjectileBase::HandleProjectileImpact(AActor* HitActor, const FHitResult& Hit)
 {
-	ApplyDamageSpecToActor(HitActor);
+	const bool bAppliedDamage = ApplyDamageSpecToActor(HitActor);
+	if (!bAppliedDamage)
+	{
+		return;
+	}
+
+	HitActors.Add(HitActor); //杩欎釜鏈哄埗鏄仛闃叉涓€涓鑹茶В绠楀娆＄鎾炰激瀹崇殑锛岄槻姝㈡姈鍔?
 
 	if (bDestroyOnHit)
 	{
@@ -155,9 +164,7 @@ bool ASurvivorProjectileBase::CanHitActor(AActor* OtherActor) const
 	{
 		return false;
 	}
-	//关于Instigator的说明：在虚幻引擎（UE5）中，Instigator 是一个非常重要且底层的核心概念。字面意思是“煽动者”或“始作俑者”，在引擎的 gameplay 架构中，它特指触发当前行为、释放当前技能或造成当前伤害的那个核心角色实体（Pawn / Character）。
-	//理解它与 Owner（拥有者）的区别。这是虚幻引擎为了解耦“物理层级”和“逻辑责任”而设计的双轨制。
-	//比如说玩家（Actor）开枪，子弹的Owner是枪，但是Instigator赋值为玩家，这样子弹既不能对枪造成伤害，当然也不能对玩家造成伤害；
+	//鍏充簬Instigator鐨勮鏄庯細鍦ㄨ櫄骞诲紩鎿庯紙UE5锛変腑锛孖nstigator 鏄竴涓潪甯搁噸瑕佷笖搴曞眰鐨勬牳蹇冩蹇点€傚瓧闈㈡剰鎬濇槸鈥滅吔鍔ㄨ€呪€濇垨鈥滃浣滀繎鑰呪€濓紝鍦ㄥ紩鎿庣殑 gameplay 鏋舵瀯涓紝瀹冪壒鎸囪Е鍙戝綋鍓嶈涓恒€侀噴鏀惧綋鍓嶆妧鑳芥垨閫犳垚褰撳墠浼ゅ鐨勯偅涓牳蹇冭鑹插疄浣擄紙Pawn / Character锛夈€?	//鐞嗚В瀹冧笌 Owner锛堟嫢鏈夎€咃級鐨勫尯鍒€傝繖鏄櫄骞诲紩鎿庝负浜嗚В鑰︹€滅墿鐞嗗眰绾р€濆拰鈥滈€昏緫璐ｄ换鈥濊€岃璁＄殑鍙岃建鍒躲€?	//姣斿璇寸帺瀹讹紙Actor锛夊紑鏋紝瀛愬脊鐨凮wner鏄灙锛屼絾鏄疘nstigator璧嬪€间负鐜╁锛岃繖鏍峰瓙寮规棦涓嶈兘瀵规灙閫犳垚浼ゅ锛屽綋鐒朵篃涓嶈兘瀵圭帺瀹堕€犳垚浼ゅ锛?
 	if (OtherActor == GetInstigator() || OtherActor == GetOwner())
 	{
 		return false;
@@ -166,40 +173,41 @@ bool ASurvivorProjectileBase::CanHitActor(AActor* OtherActor) const
 	return true;
 }
 
-void ASurvivorProjectileBase::ApplyDamageSpecToActor(AActor* TargetActor)
+bool ASurvivorProjectileBase::ApplyDamageSpecToActor(AActor* TargetActor)
 {
 	if (!TargetActor)
 	{
-		return;
+		return false;
 	}
 
 	if (!SourceASC.IsValid())
 	{
 		UE_LOG(LogSurvivorArena, Warning, TEXT("Projectile %s cannot apply damage because SourceASC is null."), *GetNameSafe(this));
-		return;
+		return false;
 	}
 
 	if (!DamageEffectSpecHandle.IsValid() || !DamageEffectSpecHandle.Data.IsValid())
 	{
 		UE_LOG(LogSurvivorArena, Warning, TEXT("Projectile %s cannot apply damage because DamageEffectSpecHandle is invalid."), *GetNameSafe(this));
-		return;
+		return false;
 	}
 
 	IAbilitySystemInterface* TargetASI = Cast<IAbilitySystemInterface>(TargetActor);
 	if (!TargetASI)
 	{
-		return;
+		return false;
 	}
 
 	UAbilitySystemComponent* TargetASC = TargetASI->GetAbilitySystemComponent();
 	if (!TargetASC)
 	{
-		return;
+		return false;
 	}
 
 	SourceASC->ApplyGameplayEffectSpecToTarget(*DamageEffectSpecHandle.Data.Get(), TargetASC);
 
 	UE_LOG(LogSurvivorArena, Log, TEXT("Projectile %s applied damage spec to %s"), *GetNameSafe(this), *GetNameSafe(TargetActor));
+	return true;
 }
 
 void ASurvivorProjectileBase::OnPrimaryCollisionBeginOverlap(
@@ -212,3 +220,7 @@ void ASurvivorProjectileBase::OnPrimaryCollisionBeginOverlap(
 {
 	HandleProjectileOverlap(OverlappedComp, OtherActor, OtherComp, OtherBodyIndex, bFromSweep, SweepResult);
 }
+
+
+
+

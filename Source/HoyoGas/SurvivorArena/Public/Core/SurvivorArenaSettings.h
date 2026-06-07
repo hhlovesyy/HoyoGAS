@@ -23,9 +23,6 @@ public:
 	TSoftObjectPtr<UDataTable> CharacterDefinitionTable;
 
 	UPROPERTY(Config, EditAnywhere, BlueprintReadOnly, Category = "Data")
-	TSoftObjectPtr<UDataTable> WeaponDefinitionTable;
-
-	UPROPERTY(Config, EditAnywhere, BlueprintReadOnly, Category = "Data")
 	TSoftObjectPtr<UDataTable> RewardDefinitionTable;
 
 	UPROPERTY(Config, EditAnywhere, BlueprintReadOnly, Category = "Data")

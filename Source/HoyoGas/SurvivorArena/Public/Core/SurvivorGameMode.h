@@ -15,6 +15,7 @@ public:
 
 	virtual void BeginPlay() override;
 	virtual void Tick(float DeltaSeconds) override;
+	virtual void HandleStartingNewPlayer_Implementation(APlayerController* NewPlayer) override;
 
 	UFUNCTION(BlueprintCallable, Category = "SurvivorArena")
 	void StartSurvivorRun(const FSurvivorRunStartConfig& Config);
@@ -23,6 +24,9 @@ public:
 	void EndSurvivorRun(bool bVictory);
 
 protected:
+	const FSurvivorCharacterDefinitionRow* ResolveCharacterDefinitionRow(FName CharacterId) const;
+	void GrantStartingLoadoutToExistingPlayers();
+	bool GrantStartingLoadoutToPlayer(APlayerController* PlayerController);
 	void SetRunState(ESurvivorRunState NewRunState);
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "SurvivorArena")
@@ -32,4 +36,5 @@ protected:
 	FSurvivorRunStartConfig CurrentRunConfig;
 
 	float RunStartTimeSeconds = 0.0f;
+	TSet<TWeakObjectPtr<APlayerController>> LoadoutGrantedPlayers;
 };

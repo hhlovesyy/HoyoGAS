@@ -7,6 +7,7 @@
 #include "DrawDebugHelpers.h"
 #include "GAS/SurvivorAbilitySystemComponent.h"
 #include "GAS/SurvivorAttributeSet.h"
+#include "TimerManager.h"
 
 ASurvivorDummyEnemy::ASurvivorDummyEnemy()
 {
@@ -52,6 +53,11 @@ void ASurvivorDummyEnemy::BeginPlay()
 			.AddUObject(this, &ASurvivorDummyEnemy::HandleHealthChanged);
 	}
 
+	if (VisualMesh)
+	{
+		VisualMeshDefaultScale = VisualMesh->GetRelativeScale3D();
+	}
+
 	UE_LOG(LogSurvivorArena, Log, TEXT("DummyEnemy BeginPlay. Enemy=%s Health=%.2f"), *GetNameSafe(this), AttributeSet ? AttributeSet->GetHealth() : 0.0f);
 }
 
@@ -64,22 +70,61 @@ void ASurvivorDummyEnemy::HandleHealthChanged(const FOnAttributeChangeData& Chan
 {
 	UE_LOG(LogSurvivorArena, Log, TEXT("DummyEnemy health changed. Enemy=%s Old=%.2f New=%.2f"), *GetNameSafe(this), ChangeData.OldValue, ChangeData.NewValue);
 
-	if (bDrawDebugHealth && GetWorld())
+	if (ChangeData.NewValue < ChangeData.OldValue)
 	{
-		DrawDebugString(
-			GetWorld(),
-			GetActorLocation() + FVector(0.0f, 0.0f, 120.0f),
-			FString::Printf(TEXT("HP: %.1f"), ChangeData.NewValue),
-			this,
-			FColor::White,
-			1.5f,
-			false);
+		PlayHitFeedback();
+	}
+
+	if (bDrawDebugHealth)
+	{
+		DrawHealthDebug(ChangeData.NewValue);
 	}
 
 	if (!bIsDead && ChangeData.NewValue <= 0.0f)
 	{
 		Die();
 	}
+}
+
+void ASurvivorDummyEnemy::PlayHitFeedback()
+{
+	if (!bEnableHitFeedback || !VisualMesh)
+	{
+		return;
+	}
+
+	VisualMesh->SetRelativeScale3D(VisualMeshDefaultScale * HitFeedbackScaleMultiplier);
+
+	if (UWorld* World = GetWorld())
+	{
+		World->GetTimerManager().ClearTimer(HitFeedbackTimerHandle);
+		World->GetTimerManager().SetTimer(HitFeedbackTimerHandle, this, &ASurvivorDummyEnemy::ResetHitFeedback, HitFeedbackDuration, false);
+	}
+}
+
+void ASurvivorDummyEnemy::ResetHitFeedback()
+{
+	if (VisualMesh)
+	{
+		VisualMesh->SetRelativeScale3D(VisualMeshDefaultScale);
+	}
+}
+
+void ASurvivorDummyEnemy::DrawHealthDebug(float CurrentHealth) const
+{
+	if (!GetWorld())
+	{
+		return;
+	}
+
+	DrawDebugString(
+		GetWorld(),
+		GetActorLocation() + FVector(0.0f, 0.0f, 120.0f),
+		FString::Printf(TEXT("HP: %.1f"), CurrentHealth),
+		const_cast<ASurvivorDummyEnemy*>(this),
+		FColor::White,
+		1.5f,
+		false);
 }
 
 void ASurvivorDummyEnemy::Die()
@@ -90,6 +135,7 @@ void ASurvivorDummyEnemy::Die()
 	}
 
 	bIsDead = true;
+	ResetHitFeedback();
 	UE_LOG(LogSurvivorArena, Log, TEXT("DummyEnemy died. Enemy=%s"), *GetNameSafe(this));
 	Destroy();
 }

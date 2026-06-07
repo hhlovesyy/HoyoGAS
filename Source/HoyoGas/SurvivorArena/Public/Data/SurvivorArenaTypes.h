@@ -10,6 +10,7 @@ class AActor;
 class UGameplayEffect;
 class UTexture2D;
 class USurvivorAbilitySet;
+class USurvivorWeaponDefinition;
 
 UENUM(BlueprintType)
 enum class ESurvivorRunState : uint8
@@ -77,49 +78,10 @@ struct HOYOGAS_API FSurvivorCharacterDefinitionRow : public FTableRowBase
 	TSubclassOf<APawn> PawnClass;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "SurvivorArena")
-	TArray<FName> StartingWeaponIds;
+	TArray<TSoftObjectPtr<USurvivorWeaponDefinition>> StartingWeapons;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "SurvivorArena")
 	TArray<TObjectPtr<USurvivorAbilitySet>> StartingAbilitySets;
-};
-
-USTRUCT(BlueprintType)
-struct HOYOGAS_API FSurvivorWeaponDefinitionRow : public FTableRowBase
-{
-	GENERATED_BODY()
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "SurvivorArena")
-	FName WeaponId = NAME_None;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "SurvivorArena")
-	FText DisplayName;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "SurvivorArena", meta = (MultiLine = "true"))
-	FText Description;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "SurvivorArena")
-	TSoftObjectPtr<UTexture2D> Icon;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "SurvivorArena")
-	TObjectPtr<USurvivorAbilitySet> GrantAbilitySet = nullptr;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "SurvivorArena")
-	FGameplayTag PrimaryAbilityTag;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "SurvivorArena")
-	float BaseDamage = 0.0f;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "SurvivorArena")
-	float BaseCooldown = 0.0f;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "SurvivorArena")
-	float BaseRange = 0.0f;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "SurvivorArena", meta = (ClampMin = "1"))
-	int32 MaxLevel = 1;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "SurvivorArena")
-	FGameplayTagContainer WeaponTags;
 };
 
 USTRUCT(BlueprintType)

@@ -11,7 +11,8 @@ ASurvivorSphereProjectile::ASurvivorSphereProjectile()
 	SphereCollision->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 	SphereCollision->SetGenerateOverlapEvents(true);
 	SphereCollision->SetCollisionObjectType(ECC_WorldDynamic);
-	SphereCollision->SetCollisionResponseToAllChannels(ECR_Overlap);
+	SphereCollision->SetCollisionResponseToAllChannels(ECR_Ignore);
+	SphereCollision->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
 
 	VisualMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("VisualMesh"));
 	VisualMesh->SetupAttachment(SphereCollision);
@@ -29,3 +30,5 @@ UStaticMeshComponent* ASurvivorSphereProjectile::GetVisualMesh() const
 {
 	return VisualMesh;
 }
+
+

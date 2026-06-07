@@ -56,7 +56,7 @@ protected:
 	// so each target is damaged once while the projectile continues through the scene.
 	virtual void HandleProjectileImpact(AActor* HitActor, const FHitResult& Hit);
 	virtual bool CanHitActor(AActor* OtherActor) const;
-	virtual void ApplyDamageSpecToActor(AActor* TargetActor);
+	virtual bool ApplyDamageSpecToActor(AActor* TargetActor);
 
 	UFUNCTION()
 	void OnPrimaryCollisionBeginOverlap(
@@ -83,6 +83,9 @@ protected:
 	FGameplayEffectSpecHandle DamageEffectSpecHandle;
 
 	TSet<TWeakObjectPtr<AActor>> HitActors;
+
+	UPROPERTY(Transient)
+	bool bProjectileInitialized = false;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Survivor|Projectile")
 	bool bDestroyOnHit = true;
