@@ -7,12 +7,51 @@
 #include "GameFramework/Actor.h"
 #include "Engine/World.h"
 
-void USurvivorAbilitySet::GiveToAbilitySystem(UAbilitySystemComponent* ASC, UObject* SourceObject) const
+bool FSurvivorGrantedAbilitySetHandles::IsEmpty() const
+{
+	return AbilitySpecHandles.IsEmpty() && ActiveEffectHandles.IsEmpty();
+}
+
+void FSurvivorGrantedAbilitySetHandles::TakeFromAbilitySystem(UAbilitySystemComponent* ASC)
 {
 	if (!ASC)
 	{
-		UE_LOG(LogSurvivorArena, Warning, TEXT("USurvivorAbilitySet::GiveToAbilitySystem skipped because ASC is null."));
 		return;
+	}
+
+	for (const FGameplayAbilitySpecHandle& AbilityHandle : AbilitySpecHandles)
+	{
+		if (AbilityHandle.IsValid())
+		{
+			ASC->ClearAbility(AbilityHandle);
+		}
+	}
+
+	for (const FActiveGameplayEffectHandle& EffectHandle : ActiveEffectHandles)
+	{
+		if (EffectHandle.IsValid())
+		{
+			ASC->RemoveActiveGameplayEffect(EffectHandle);
+		}
+	}
+
+	AbilitySpecHandles.Reset();
+	ActiveEffectHandles.Reset();
+}
+
+void USurvivorAbilitySet::GiveToAbilitySystem(UAbilitySystemComponent* ASC, UObject* SourceObject) const
+{
+	GiveToAbilitySystemAndCollect(ASC, SourceObject);
+}
+
+FSurvivorGrantedAbilitySetHandles USurvivorAbilitySet::GiveToAbilitySystemAndCollect(UAbilitySystemComponent* ASC, UObject* SourceObject) const
+{
+	FSurvivorGrantedAbilitySetHandles GrantedHandles;
+
+	if (!ASC)
+	{
+		UE_LOG(LogSurvivorArena, Warning, TEXT("USurvivorAbilitySet::GiveToAbilitySystem skipped because ASC is null."));
+		return GrantedHandles;
 	}
 
 	const UWorld* World = ASC->GetWorld();
@@ -29,7 +68,7 @@ void USurvivorAbilitySet::GiveToAbilitySystem(UAbilitySystemComponent* ASC, UObj
 			TEXT("USurvivorAbilitySet::GiveToAbilitySystem skipped on non-authority ASC. Owner=%s AbilitySet=%s"),
 			*GetNameSafe(OwnerActor),
 			*GetNameSafe(this));
-		return;
+		return GrantedHandles;
 	}
 
 	for (const TSubclassOf<UGameplayAbility>& AbilityClass : AbilitiesToGrant)
@@ -53,7 +92,7 @@ void USurvivorAbilitySet::GiveToAbilitySystem(UAbilitySystemComponent* ASC, UObj
 
 		SourceObject：技能来源。这非常关键。比如这个技能是因为玩家装备了“火焰法杖”才获得的，那么这里就可以传“法杖”的指针。以后如果玩家把法杖脱了，你就可以通过查找这个 SourceObject，把对应的技能从玩家身上精准地剥离掉。
 		 */
-		ASC->GiveAbility(FGameplayAbilitySpec(AbilityClass, 1, INDEX_NONE, SourceObject));
+		GrantedHandles.AbilitySpecHandles.Add(ASC->GiveAbility(FGameplayAbilitySpec(AbilityClass, 1, INDEX_NONE, SourceObject)));
 	}
 
 	for (const TSubclassOf<UGameplayEffect>& EffectClass : PassiveEffectsToApply)
@@ -93,8 +132,9 @@ void USurvivorAbilitySet::GiveToAbilitySystem(UAbilitySystemComponent* ASC, UObj
 			EffectContext：谁发来的快递？（包含来源信息的上下文）
 		至此，这个被动 Buff 才真正生效，底层会自动去调用我们上一回讲到的 AttributeSet 里的 PostGameplayEffectExecute，让角色的血量上限立刻增加 100。
 		 */
-		ASC->ApplyGameplayEffectToSelf(EffectCDO, 1.0f, EffectContext);
+		GrantedHandles.ActiveEffectHandles.Add(ASC->ApplyGameplayEffectToSelf(EffectCDO, 1.0f, EffectContext));
 	}
 
 	UE_LOG(LogSurvivorArena, Log, TEXT("Applied ability set %s to ASC owner %s."), *GetNameSafe(this), *GetNameSafe(OwnerActor));
+	return GrantedHandles;
 }

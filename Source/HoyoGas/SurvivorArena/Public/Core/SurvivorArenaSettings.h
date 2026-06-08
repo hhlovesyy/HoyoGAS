@@ -5,6 +5,7 @@
 #include "SurvivorArenaSettings.generated.h"
 
 class UDataTable;
+class USurvivorCardDefinition;
 
 UCLASS(Config = Game, DefaultConfig, meta = (DisplayName = "Survivor Arena"))
 class HOYOGAS_API USurvivorArenaSettings : public UDeveloperSettings
@@ -36,4 +37,7 @@ public:
 
 	UPROPERTY(Config, EditAnywhere, BlueprintReadOnly, Category = "Defaults")
 	FName DefaultLevelId = TEXT("Level_001");
+
+	UPROPERTY(Config, EditAnywhere, BlueprintReadOnly, Category = "Defaults")
+	TArray<TSoftObjectPtr<USurvivorCardDefinition>> DefaultStartingCards;
 };

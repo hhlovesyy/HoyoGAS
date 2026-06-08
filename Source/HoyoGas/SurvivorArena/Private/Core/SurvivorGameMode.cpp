@@ -1,5 +1,7 @@
 #include "Core/SurvivorGameMode.h"
 
+#include "Cards/SurvivorCardDefinition.h"
+#include "Cards/SurvivorCardLoadoutComponent.h"
 #include "Core/SurvivorArenaLog.h"
 #include "Core/SurvivorArenaSettings.h"
 #include "Core/SurvivorGameState.h"
@@ -215,6 +217,41 @@ bool ASurvivorGameMode::GrantStartingLoadoutToPlayer(APlayerController* PlayerCo
 		return false;
 	}
 
+	USurvivorCardLoadoutComponent* CardLoadoutComponent = SurvivorPlayerState->GetCardLoadoutComponent();
+	if (!CardLoadoutComponent)
+	{
+		UE_LOG(LogSurvivorArena, Error, TEXT("GrantStartingLoadoutToPlayer failed because CardLoadoutComponent is null. PlayerState=%s"),
+			*GetNameSafe(SurvivorPlayerState));
+		return false;
+	}
+
+	const USurvivorArenaSettings* Settings = GetDefault<USurvivorArenaSettings>();
+	TArray<USurvivorCardDefinition*> StartingCardDefinitions;
+	if (Settings)
+	{
+		StartingCardDefinitions.Reserve(Settings->DefaultStartingCards.Num());
+		for (const TSoftObjectPtr<USurvivorCardDefinition>& CardSoftPtr : Settings->DefaultStartingCards)
+		{
+			USurvivorCardDefinition* CardDefinition = CardSoftPtr.LoadSynchronous();
+			if (!CardDefinition)
+			{
+				UE_LOG(LogSurvivorArena, Error, TEXT("DefaultStartingCards contains an unloaded or null card asset."));
+				return false;
+			}
+
+			FString ValidationError;
+			if (!CardDefinition->ValidateDefinition(&ValidationError))
+			{
+				UE_LOG(LogSurvivorArena, Error, TEXT("DefaultStartingCard is invalid. Card=%s Error=%s"),
+					*GetNameSafe(CardDefinition),
+					*ValidationError);
+				return false;
+			}
+
+			StartingCardDefinitions.Add(CardDefinition);
+		}
+	}
+
 	TArray<USurvivorWeaponDefinition*> StartingWeaponDefinitions;
 	StartingWeaponDefinitions.Reserve(CharacterDefinition->StartingWeapons.Num());
 
@@ -275,13 +312,32 @@ bool ASurvivorGameMode::GrantStartingLoadoutToPlayer(APlayerController* PlayerCo
 		}
 	}
 
+	if (StartingCardDefinitions.Num() == 0)
+	{
+		UE_LOG(LogSurvivorArena, Log, TEXT("No DefaultStartingCards configured. PlayerState=%s"), *GetNameSafe(SurvivorPlayerState));
+	}
+	else
+	{
+		for (USurvivorCardDefinition* CardDefinition : StartingCardDefinitions)
+		{
+			if (!CardLoadoutComponent->EquipCard(CardDefinition))
+			{
+				UE_LOG(LogSurvivorArena, Error, TEXT("GrantStartingLoadoutToPlayer failed to equip DefaultStartingCard. Controller=%s Card=%s"),
+					*GetNameSafe(PlayerController),
+					*GetNameSafe(CardDefinition));
+				return false;
+			}
+		}
+	}
+
 	LoadoutGrantedPlayers.Add(PlayerControllerKey);
 
-	UE_LOG(LogSurvivorArena, Log, TEXT("Granted starting loadout. Controller=%s CharacterId=%s WeaponCount=%d AbilitySetCount=%d"),
+	UE_LOG(LogSurvivorArena, Log, TEXT("Granted starting loadout. Controller=%s CharacterId=%s WeaponCount=%d AbilitySetCount=%d StartingCardCount=%d"),
 		*GetNameSafe(PlayerController),
 		*CurrentRunConfig.CharacterId.ToString(),
 		CharacterDefinition->StartingWeapons.Num(),
-		CharacterDefinition->StartingAbilitySets.Num());
+		CharacterDefinition->StartingAbilitySets.Num(),
+		StartingCardDefinitions.Num());
 
 	return true;
 }

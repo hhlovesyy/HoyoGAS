@@ -1,7 +1,9 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Abilities/GameplayAbilityTypes.h"
 #include "Engine/DataAsset.h"
+#include "GameplayEffectTypes.h"
 #include "SurvivorAbilitySet.generated.h"
 
 /*
@@ -18,6 +20,22 @@ class UAbilitySystemComponent;
 class UGameplayAbility;
 class UGameplayEffect;
 
+USTRUCT(BlueprintType)
+struct HOYOGAS_API FSurvivorGrantedAbilitySetHandles
+{
+	GENERATED_BODY()
+
+public:
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "SurvivorArena")
+	TArray<FGameplayAbilitySpecHandle> AbilitySpecHandles;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "SurvivorArena")
+	TArray<FActiveGameplayEffectHandle> ActiveEffectHandles;
+
+	bool IsEmpty() const;
+	void TakeFromAbilitySystem(UAbilitySystemComponent* ASC);
+};
+
 UCLASS(BlueprintType)
 class HOYOGAS_API USurvivorAbilitySet : public UPrimaryDataAsset
 {
@@ -32,4 +50,6 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "SurvivorArena")
 	void GiveToAbilitySystem(UAbilitySystemComponent* ASC, UObject* SourceObject = nullptr) const;
+
+	FSurvivorGrantedAbilitySetHandles GiveToAbilitySystemAndCollect(UAbilitySystemComponent* ASC, UObject* SourceObject = nullptr) const;
 };

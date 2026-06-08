@@ -1,5 +1,6 @@
 #include "Player/SurvivorPlayerState.h"
 
+#include "Cards/SurvivorCardLoadoutComponent.h"
 #include "Core/SurvivorArenaLog.h"
 #include "GAS/SurvivorAbilitySystemComponent.h"
 #include "GAS/SurvivorAttributeSet.h"
@@ -17,6 +18,7 @@ ASurvivorPlayerState::ASurvivorPlayerState()
 	AbilitySystemComponent->SetReplicationMode(EGameplayEffectReplicationMode::Mixed);
 
 	AttributeSet = CreateDefaultSubobject<USurvivorAttributeSet>(TEXT("AttributeSet"));
+	CardLoadoutComponent = CreateDefaultSubobject<USurvivorCardLoadoutComponent>(TEXT("CardLoadoutComponent"));
 }
 
 void ASurvivorPlayerState::BeginPlay()
@@ -53,6 +55,11 @@ USurvivorAbilitySystemComponent* ASurvivorPlayerState::GetSurvivorAbilitySystemC
 const USurvivorAttributeSet* ASurvivorPlayerState::GetSurvivorAttributeSet() const
 {
 	return AttributeSet;
+}
+
+USurvivorCardLoadoutComponent* ASurvivorPlayerState::GetCardLoadoutComponent() const
+{
+	return CardLoadoutComponent;
 }
 
 int32 ASurvivorPlayerState::GetSurvivorLevel() const
