@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Cards/SurvivorCardRuntimeData.h"
 #include "UObject/Object.h"
 #include "Cards/SurvivorCardRuntimeTypes.h"
 #include "SurvivorCardBehavior.generated.h"
@@ -13,6 +14,9 @@ class HOYOGAS_API USurvivorCardBehavior : public UObject
 public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "SurvivorArena|Cards")
 	bool bReceivesBehaviorTick = false;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "SurvivorArena|Cards")
+	FName RuntimeStateKey = NAME_None;
 
 	UFUNCTION(BlueprintNativeEvent, Category = "SurvivorArena|Cards")
 	bool OnCardEquipped(const FSurvivorCardBehaviorContext& Context, FSurvivorAppliedCardHandles& OutAppliedHandles) const;
@@ -31,4 +35,10 @@ public:
 
 	UFUNCTION(BlueprintNativeEvent, Category = "SurvivorArena|Cards")
 	void TickBehavior(const FSurvivorCardBehaviorContext& Context, float DeltaSeconds) const;
+
+protected:
+	const FSurvivorCardRuntimeInstance* ResolveRuntimeInstance(const FSurvivorCardBehaviorContext& Context) const;
+	FSurvivorCardRuntimeState* ResolveMutableRuntimeState(const FSurvivorCardBehaviorContext& Context) const;
+	USurvivorCardRuntimeData* ResolveRuntimeData(const FSurvivorCardBehaviorContext& Context, TSubclassOf<USurvivorCardRuntimeData> RuntimeDataClass) const;
+	FName ResolveRuntimeStateKey() const;
 };

@@ -9,6 +9,7 @@ class APlayerState;
 class APawn;
 class UAbilitySystemComponent;
 class USurvivorCardDefinition;
+class USurvivorCardRuntimeData;
 class USurvivorCardLoadoutComponent;
 
 USTRUCT(BlueprintType)
@@ -27,6 +28,48 @@ public:
 
 	bool IsEmpty() const;
 	void Reset();
+};
+
+USTRUCT(BlueprintType)
+struct HOYOGAS_API FSurvivorCardRuntimeDataEntry
+{
+	GENERATED_BODY()
+
+public:
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "SurvivorArena")
+	FName StateId = NAME_None;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "SurvivorArena")
+	TObjectPtr<USurvivorCardRuntimeData> RuntimeData = nullptr;
+};
+
+USTRUCT(BlueprintType)
+struct HOYOGAS_API FSurvivorCardRuntimeState
+{
+	GENERATED_BODY()
+
+public:
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "SurvivorArena")
+	TArray<FSurvivorCardRuntimeDataEntry> RuntimeDataEntries;
+};
+
+USTRUCT(BlueprintType)
+struct HOYOGAS_API FSurvivorCardRuntimeInstance
+{
+	GENERATED_BODY()
+
+public:
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "SurvivorArena")
+	int32 RuntimeInstanceId = INDEX_NONE;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "SurvivorArena")
+	TObjectPtr<USurvivorCardDefinition> CardDefinition = nullptr;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "SurvivorArena")
+	FSurvivorAppliedCardHandles AppliedHandles;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "SurvivorArena")
+	FSurvivorCardRuntimeState RuntimeState;
 };
 
 USTRUCT(BlueprintType)
@@ -52,6 +95,9 @@ public:
 
 	UPROPERTY(BlueprintReadOnly, Category = "SurvivorArena")
 	TObjectPtr<USurvivorCardDefinition> CardDefinition = nullptr;
+
+	UPROPERTY(BlueprintReadOnly, Category = "SurvivorArena")
+	int32 RuntimeCardInstanceId = INDEX_NONE;
 
 	UPROPERTY(BlueprintReadOnly, Category = "SurvivorArena")
 	int32 StackCount = 0;

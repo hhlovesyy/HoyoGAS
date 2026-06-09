@@ -23,6 +23,7 @@ public:
 
 	virtual void BeginPlay() override;
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
+	const FSurvivorEnemyDefinitionRow* GetEnemyDefinition() const;
 
 protected:
 	void HandleHealthChanged(const FOnAttributeChangeData& ChangeData);
@@ -30,6 +31,7 @@ protected:
 	void ResetHitFeedback();
 	void DrawHealthDebug(float CurrentHealth) const;
 	void SpawnConfiguredDrops();
+	void NotifyPlayerCardLoadoutsEnemyKilled();
 	const FSurvivorEnemyDefinitionRow* ResolveEnemyDefinition() const;
 	void Die();
 

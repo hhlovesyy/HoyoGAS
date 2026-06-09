@@ -9,6 +9,7 @@
 #include "Engine/DataTable.h"
 #include "Engine/World.h"
 #include "GAS/SurvivorAbilitySet.h"
+#include "Inventory/SurvivorRunInventoryComponent.h"
 #include "Player/SurvivorCharacter.h"
 #include "Player/SurvivorPlayerController.h"
 #include "Player/SurvivorPlayerState.h"
@@ -218,10 +219,13 @@ bool ASurvivorGameMode::GrantStartingLoadoutToPlayer(APlayerController* PlayerCo
 	}
 
 	USurvivorCardLoadoutComponent* LoadoutComponent = SurvivorPlayerState->GetLoadoutComponent();
-	if (!LoadoutComponent)
+	USurvivorRunInventoryComponent* RunInventoryComponent = SurvivorPlayerState->GetRunInventoryComponent();
+	if (!LoadoutComponent || !RunInventoryComponent)
 	{
-		UE_LOG(LogSurvivorArena, Error, TEXT("GrantStartingLoadoutToPlayer failed because LoadoutComponent is null. PlayerState=%s"),
-			*GetNameSafe(SurvivorPlayerState));
+		UE_LOG(LogSurvivorArena, Error, TEXT("GrantStartingLoadoutToPlayer failed because LoadoutComponent or RunInventoryComponent is null. PlayerState=%s Loadout=%s RunInventory=%s"),
+			*GetNameSafe(SurvivorPlayerState),
+			*GetNameSafe(LoadoutComponent),
+			*GetNameSafe(RunInventoryComponent));
 		return false;
 	}
 
@@ -289,7 +293,7 @@ bool ASurvivorGameMode::GrantStartingLoadoutToPlayer(APlayerController* PlayerCo
 
 	for (USurvivorAbilitySet* AbilitySet : CharacterDefinition->StartingAbilitySets)
 	{
-		if (!LoadoutComponent->GrantStartingAbilitySet(AbilitySet, SurvivorCharacter))
+		if (!RunInventoryComponent->GrantStartingAbilitySet(AbilitySet, SurvivorCharacter))
 		{
 			UE_LOG(LogSurvivorArena, Error, TEXT("GrantStartingLoadoutToPlayer failed to grant StartingAbilitySet. Controller=%s CharacterId=%s AbilitySet=%s"),
 				*GetNameSafe(PlayerController),
@@ -299,8 +303,7 @@ bool ASurvivorGameMode::GrantStartingLoadoutToPlayer(APlayerController* PlayerCo
 		}
 	}
 
-	USurvivorWeaponManagerComponent* WeaponManager = SurvivorCharacter->GetWeaponManagerComponent();
-	if (!WeaponManager)
+	if (!SurvivorCharacter->GetWeaponManagerComponent())
 	{
 		UE_LOG(LogSurvivorArena, Error, TEXT("GrantStartingLoadoutToPlayer failed because WeaponManagerComponent is null. Character=%s"),
 			*GetNameSafe(SurvivorCharacter));
@@ -309,7 +312,7 @@ bool ASurvivorGameMode::GrantStartingLoadoutToPlayer(APlayerController* PlayerCo
 
 	for (USurvivorWeaponDefinition* WeaponDefinition : StartingWeaponDefinitions)
 	{
-		if (!LoadoutComponent->GrantStartingWeapon(WeaponDefinition, WeaponManager))
+		if (!RunInventoryComponent->GrantStartingWeapon(WeaponDefinition))
 		{
 			UE_LOG(LogSurvivorArena, Error, TEXT("GrantStartingLoadoutToPlayer failed to grant StartingWeapon. Controller=%s CharacterId=%s Weapon=%s"),
 				*GetNameSafe(PlayerController),

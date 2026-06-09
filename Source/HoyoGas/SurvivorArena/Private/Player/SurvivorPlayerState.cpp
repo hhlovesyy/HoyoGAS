@@ -5,6 +5,7 @@
 #include "Economy/SurvivorRunEconomyComponent.h"
 #include "GAS/SurvivorAbilitySystemComponent.h"
 #include "GAS/SurvivorAttributeSet.h"
+#include "Inventory/SurvivorRunInventoryComponent.h"
 #include "Net/UnrealNetwork.h"
 
 ASurvivorPlayerState::ASurvivorPlayerState()
@@ -20,6 +21,7 @@ ASurvivorPlayerState::ASurvivorPlayerState()
 
 	AttributeSet = CreateDefaultSubobject<USurvivorAttributeSet>(TEXT("AttributeSet"));
 	CardLoadoutComponent = CreateDefaultSubobject<USurvivorCardLoadoutComponent>(TEXT("CardLoadoutComponent"));
+	RunInventoryComponent = CreateDefaultSubobject<USurvivorRunInventoryComponent>(TEXT("RunInventoryComponent"));
 	RunEconomyComponent = CreateDefaultSubobject<USurvivorRunEconomyComponent>(TEXT("RunEconomyComponent"));
 }
 
@@ -67,6 +69,11 @@ USurvivorCardLoadoutComponent* ASurvivorPlayerState::GetLoadoutComponent() const
 USurvivorCardLoadoutComponent* ASurvivorPlayerState::GetCardLoadoutComponent() const
 {
 	return CardLoadoutComponent;
+}
+
+USurvivorRunInventoryComponent* ASurvivorPlayerState::GetRunInventoryComponent() const
+{
+	return RunInventoryComponent;
 }
 
 USurvivorRunEconomyComponent* ASurvivorPlayerState::GetRunEconomyComponent() const

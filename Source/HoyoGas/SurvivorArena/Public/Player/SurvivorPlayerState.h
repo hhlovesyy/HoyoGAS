@@ -8,6 +8,7 @@
 class USurvivorAbilitySystemComponent;
 class USurvivorAttributeSet;
 class USurvivorCardLoadoutComponent;
+class USurvivorRunInventoryComponent;
 class USurvivorRunEconomyComponent;
 class UAbilitySystemComponent;
 
@@ -27,6 +28,7 @@ public:
 	const USurvivorAttributeSet* GetSurvivorAttributeSet() const;
 	USurvivorCardLoadoutComponent* GetLoadoutComponent() const;
 	USurvivorCardLoadoutComponent* GetCardLoadoutComponent() const;
+	USurvivorRunInventoryComponent* GetRunInventoryComponent() const;
 	USurvivorRunEconomyComponent* GetRunEconomyComponent() const;
 	int32 GetSurvivorLevel() const;
 	void SetSurvivorLevel(int32 NewLevel);
@@ -41,6 +43,9 @@ protected:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "SurvivorArena")
 	TObjectPtr<USurvivorCardLoadoutComponent> CardLoadoutComponent;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "SurvivorArena")
+	TObjectPtr<USurvivorRunInventoryComponent> RunInventoryComponent;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "SurvivorArena")
 	TObjectPtr<USurvivorRunEconomyComponent> RunEconomyComponent;

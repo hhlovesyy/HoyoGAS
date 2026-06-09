@@ -4,14 +4,14 @@
 #include "AbilitySystemInterface.h"
 #include "Cards/SurvivorCardBehavior.h"
 #include "Cards/SurvivorCardDefinition.h"
+#include "Cards/SurvivorCardRuntimeData.h"
+#include "GAS/SurvivorAbilitySet.h"
 #include "Core/SurvivorArenaLog.h"
 #include "Engine/Engine.h"
 #include "Engine/World.h"
 #include "GameFramework/Pawn.h"
 #include "GameFramework/PlayerState.h"
 #include "GameplayEffect.h"
-#include "Weapons/SurvivorWeaponDefinition.h"
-#include "Weapons/SurvivorWeaponManagerComponent.h"
 
 bool FSurvivorAppliedCardHandles::IsEmpty() const
 {
@@ -42,15 +42,24 @@ void USurvivorCardLoadoutComponent::TickComponent(float DeltaTime, ELevelTick Ti
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
-	for (const FSurvivorEquippedCardEntry& Entry : EquippedCardEntries)
+	for (const FSurvivorCardRuntimeInstance& RuntimeInstance : EquippedCardRuntimeInstances)
 	{
-		if (!Entry.CardDefinition || Entry.StackCount <= 0)
+		if (!RuntimeInstance.CardDefinition)
 		{
 			continue;
 		}
 
-		const FSurvivorCardBehaviorContext Context = BuildBehaviorContext(Entry.CardDefinition, Entry.StackCount);
-		for (USurvivorCardBehavior* Behavior : Entry.CardDefinition->Behaviors)
+		const int32 StackCount = GetRuntimeInstanceCount(RuntimeInstance.CardDefinition);
+		if (StackCount <= 0)
+		{
+			continue;
+		}
+
+		const FSurvivorCardBehaviorContext Context = BuildBehaviorContext(
+			RuntimeInstance.CardDefinition,
+			StackCount,
+			RuntimeInstance.RuntimeInstanceId);
+		for (USurvivorCardBehavior* Behavior : RuntimeInstance.CardDefinition->Behaviors)
 		{
 			if (Behavior && Behavior->bReceivesBehaviorTick)
 			{
@@ -58,87 +67,6 @@ void USurvivorCardLoadoutComponent::TickComponent(float DeltaTime, ELevelTick Ti
 			}
 		}
 	}
-}
-
-bool USurvivorCardLoadoutComponent::GrantStartingAbilitySet(USurvivorAbilitySet* AbilitySet, UObject* SourceObject)
-{
-	if (!AbilitySet)
-	{
-		UE_LOG(LogSurvivorArena, Warning, TEXT("GrantStartingAbilitySet failed because AbilitySet is null. Owner=%s"), *GetNameSafe(GetOwner()));
-		return false;
-	}
-
-	UAbilitySystemComponent* ASC = ResolveOwnerASC();
-	if (!ASC)
-	{
-		UE_LOG(LogSurvivorArena, Warning, TEXT("GrantStartingAbilitySet failed because owner ASC is null. Owner=%s AbilitySet=%s"),
-			*GetNameSafe(GetOwner()),
-			*GetNameSafe(AbilitySet));
-		return false;
-	}
-
-	const FSurvivorGrantedAbilitySetHandles GrantedHandles = AbilitySet->GiveToAbilitySystemAndCollect(ASC, SourceObject);
-	GrantedStartingAbilitySetHandles.Add(GrantedHandles);
-
-	UE_LOG(LogSurvivorArena, Log, TEXT("Granted starting ability set. Owner=%s AbilitySet=%s Count=%d"),
-		*GetNameSafe(GetOwner()),
-		*GetNameSafe(AbilitySet),
-		GrantedStartingAbilitySetHandles.Num());
-
-	BroadcastLoadoutChanged();
-	return true;
-}
-
-bool USurvivorCardLoadoutComponent::GrantStartingWeapon(USurvivorWeaponDefinition* WeaponDefinition, USurvivorWeaponManagerComponent* WeaponManager)
-{
-	if (!WeaponDefinition || !WeaponManager)
-	{
-		UE_LOG(LogSurvivorArena, Warning, TEXT("GrantStartingWeapon failed because WeaponDefinition or WeaponManager is null. Owner=%s Weapon=%s WeaponManager=%s"),
-			*GetNameSafe(GetOwner()),
-			*GetNameSafe(WeaponDefinition),
-			*GetNameSafe(WeaponManager));
-		return false;
-	}
-
-	FSurvivorGrantedWeaponHandles GrantedHandles;
-	if (!WeaponManager->GrantWeaponAndCollect(WeaponDefinition, GrantedHandles))
-	{
-		return false;
-	}
-
-	GrantedStartingWeapons.Add(GrantedHandles);
-
-	UE_LOG(LogSurvivorArena, Log, TEXT("Granted starting weapon. Owner=%s Weapon=%s Count=%d"),
-		*GetNameSafe(GetOwner()),
-		*GetNameSafe(WeaponDefinition),
-		GrantedStartingWeapons.Num());
-
-	BroadcastLoadoutChanged();
-	return true;
-}
-
-void USurvivorCardLoadoutComponent::ClearStartingLoadout(USurvivorWeaponManagerComponent* WeaponManager)
-{
-	if (UAbilitySystemComponent* ASC = ResolveOwnerASC())
-	{
-		for (FSurvivorGrantedAbilitySetHandles& GrantedHandles : GrantedStartingAbilitySetHandles)
-		{
-			GrantedHandles.TakeFromAbilitySystem(ASC);
-		}
-	}
-
-	GrantedStartingAbilitySetHandles.Reset();
-
-	if (WeaponManager)
-	{
-		for (const FSurvivorGrantedWeaponHandles& GrantedHandles : GrantedStartingWeapons)
-		{
-			WeaponManager->RemoveWeaponByHandles(GrantedHandles);
-		}
-	}
-
-	GrantedStartingWeapons.Reset();
-	BroadcastLoadoutChanged();
 }
 
 bool USurvivorCardLoadoutComponent::EquipCard(USurvivorCardDefinition* CardDefinition)
@@ -169,9 +97,8 @@ bool USurvivorCardLoadoutComponent::EquipCard(USurvivorCardDefinition* CardDefin
 		return false;
 	}
 
-	FSurvivorEquippedCardEntry* ExistingEntry = FindCardEntry(CardDefinition);
-	const int32 OldStackCount = ExistingEntry ? ExistingEntry->StackCount : 0;
-	if (ExistingEntry)
+	const int32 OldStackCount = GetRuntimeInstanceCount(CardDefinition);
+	if (OldStackCount > 0)
 	{
 		if (CardDefinition->bUnique)
 		{
@@ -181,46 +108,42 @@ bool USurvivorCardLoadoutComponent::EquipCard(USurvivorCardDefinition* CardDefin
 			return false;
 		}
 
-		if (ExistingEntry->StackCount >= CardDefinition->MaxStack)
+		if (OldStackCount >= CardDefinition->MaxStack)
 		{
 			UE_LOG(LogSurvivorArena, Warning, TEXT("EquipCard failed because card reached MaxStack. Owner=%s Card=%s StackCount=%d MaxStack=%d"),
 				*GetNameSafe(GetOwner()),
 				*GetNameSafe(CardDefinition),
-				ExistingEntry->StackCount,
+				OldStackCount,
 				CardDefinition->MaxStack);
 			return false;
 		}
 	}
 
+	const int32 RuntimeInstanceId = NextRuntimeCardInstanceId++;
+	FSurvivorCardRuntimeInstance& NewRuntimeInstance = EquippedCardRuntimeInstances.AddDefaulted_GetRef();
+	NewRuntimeInstance.RuntimeInstanceId = RuntimeInstanceId;
+	NewRuntimeInstance.CardDefinition = CardDefinition;
+
 	FSurvivorAppliedCardHandles AppliedHandles;
-	if (!ApplyCardStack(CardDefinition, AppliedHandles))
+	if (!ApplyCardStack(CardDefinition, OldStackCount + 1, AppliedHandles, RuntimeInstanceId))
 	{
+		EquippedCardRuntimeInstances.RemoveAt(EquippedCardRuntimeInstances.Num() - 1);
 		return false;
 	}
 
-	if (!ExistingEntry)
-	{
-		FSurvivorEquippedCardEntry NewEntry;
-		NewEntry.CardDefinition = CardDefinition;
-		NewEntry.StackCount = 1;
-		NewEntry.AppliedStacks.Add(MoveTemp(AppliedHandles));
-		EquippedCardEntries.Add(MoveTemp(NewEntry));
-	}
-	else
-	{
-		ExistingEntry->StackCount += 1;
-		ExistingEntry->AppliedStacks.Add(MoveTemp(AppliedHandles));
-	}
+	NewRuntimeInstance.AppliedHandles = MoveTemp(AppliedHandles);
 
+	RebuildEquippedCardEntries();
 	RecalculateAggregatedCardTags();
-	BroadcastCardStackChanged(CardDefinition, OldStackCount, OldStackCount + 1);
+	BroadcastCardStackChanged(CardDefinition, OldStackCount, OldStackCount + 1, GatherRuntimeInstanceIds(CardDefinition));
 	RefreshBehaviorTickState();
 
-	UE_LOG(LogSurvivorArena, Log, TEXT("EquipCard succeeded. Owner=%s Card=%s UsedSlots=%d/%d"),
+	UE_LOG(LogSurvivorArena, Log, TEXT("EquipCard succeeded. Owner=%s Card=%s UsedSlots=%d/%d RuntimeInstanceId=%d"),
 		*GetNameSafe(GetOwner()),
 		*GetNameSafe(CardDefinition),
 		GetUsedCardSlots(),
-		MaxCardSlots);
+		MaxCardSlots,
+		RuntimeInstanceId);
 
 	EmitCardDebugMessage(FString::Printf(TEXT("Card Equipped: %s (%d/%d)"), *GetNameSafe(CardDefinition), GetUsedCardSlots(), MaxCardSlots), FColor::Green);
 	PrintCardTagSummary();
@@ -235,68 +158,69 @@ bool USurvivorCardLoadoutComponent::UnequipCard(USurvivorCardDefinition* CardDef
 		return false;
 	}
 
-	for (int32 Index = 0; Index < EquippedCardEntries.Num(); ++Index)
+	const int32 RuntimeInstanceIndex = FindLastRuntimeInstanceIndex(CardDefinition);
+	if (RuntimeInstanceIndex == INDEX_NONE)
 	{
-		FSurvivorEquippedCardEntry& Entry = EquippedCardEntries[Index];
-		if (Entry.CardDefinition != CardDefinition)
-		{
-			continue;
-		}
-
-		if (Entry.AppliedStacks.Num() > 0)
-		{
-			const FSurvivorAppliedCardHandles AppliedHandles = Entry.AppliedStacks.Pop();
-			const FSurvivorCardBehaviorContext BehaviorContext = BuildBehaviorContext(CardDefinition, Entry.StackCount);
-			for (USurvivorCardBehavior* Behavior : CardDefinition->Behaviors)
-			{
-				if (Behavior)
-				{
-					Behavior->OnCardUnequipped(BehaviorContext, AppliedHandles);
-				}
-			}
-
-			RemoveAppliedHandles(AppliedHandles);
-		}
-
-		Entry.StackCount = FMath::Max(0, Entry.StackCount - 1);
-		const int32 NewStackCount = Entry.StackCount;
-		if (Entry.StackCount == 0)
-		{
-			EquippedCardEntries.RemoveAt(Index);
-		}
-
-		RecalculateAggregatedCardTags();
-		BroadcastCardStackChanged(CardDefinition, NewStackCount + 1, NewStackCount);
-		RefreshBehaviorTickState();
-
-		UE_LOG(LogSurvivorArena, Log, TEXT("UnequipCard succeeded. Owner=%s Card=%s UsedSlots=%d/%d"),
+		UE_LOG(LogSurvivorArena, Warning, TEXT("UnequipCard failed because card is not equipped. Owner=%s Card=%s"),
 			*GetNameSafe(GetOwner()),
-			*GetNameSafe(CardDefinition),
-			GetUsedCardSlots(),
-			MaxCardSlots);
-
-		EmitCardDebugMessage(FString::Printf(TEXT("Card Unequipped: %s (%d/%d)"), *GetNameSafe(CardDefinition), GetUsedCardSlots(), MaxCardSlots), FColor::Yellow);
-		PrintCardTagSummary();
-		BroadcastLoadoutChanged();
-		return true;
+			*GetNameSafe(CardDefinition));
+		return false;
 	}
 
-	UE_LOG(LogSurvivorArena, Warning, TEXT("UnequipCard failed because card is not equipped. Owner=%s Card=%s"),
+	const int32 OldStackCount = GetRuntimeInstanceCount(CardDefinition);
+	const FSurvivorCardRuntimeInstance RuntimeInstance = EquippedCardRuntimeInstances[RuntimeInstanceIndex];
+	const FSurvivorCardBehaviorContext BehaviorContext = BuildBehaviorContext(CardDefinition, OldStackCount, RuntimeInstance.RuntimeInstanceId);
+	for (USurvivorCardBehavior* Behavior : CardDefinition->Behaviors)
+	{
+		if (Behavior)
+		{
+			Behavior->OnCardUnequipped(BehaviorContext, RuntimeInstance.AppliedHandles);
+		}
+	}
+
+	RemoveAppliedHandles(RuntimeInstance.AppliedHandles);
+	EquippedCardRuntimeInstances.RemoveAt(RuntimeInstanceIndex);
+
+	RebuildEquippedCardEntries();
+	RecalculateAggregatedCardTags();
+	BroadcastCardStackChanged(CardDefinition, OldStackCount, OldStackCount - 1, GatherRuntimeInstanceIds(CardDefinition));
+	RefreshBehaviorTickState();
+
+	UE_LOG(LogSurvivorArena, Log, TEXT("UnequipCard succeeded. Owner=%s Card=%s UsedSlots=%d/%d RuntimeInstanceId=%d"),
 		*GetNameSafe(GetOwner()),
-		*GetNameSafe(CardDefinition));
-	return false;
+		*GetNameSafe(CardDefinition),
+		GetUsedCardSlots(),
+		MaxCardSlots,
+		RuntimeInstance.RuntimeInstanceId);
+
+	EmitCardDebugMessage(FString::Printf(TEXT("Card Unequipped: %s (%d/%d)"), *GetNameSafe(CardDefinition), GetUsedCardSlots(), MaxCardSlots), FColor::Yellow);
+	PrintCardTagSummary();
+	BroadcastLoadoutChanged();
+	return true;
 }
 
 void USurvivorCardLoadoutComponent::ClearCards()
 {
-	for (const FSurvivorEquippedCardEntry& Entry : EquippedCardEntries)
+	for (int32 Index = EquippedCardRuntimeInstances.Num() - 1; Index >= 0; --Index)
 	{
-		for (const FSurvivorAppliedCardHandles& AppliedHandles : Entry.AppliedStacks)
+		const FSurvivorCardRuntimeInstance RuntimeInstance = EquippedCardRuntimeInstances[Index];
+		if (RuntimeInstance.CardDefinition)
 		{
-			RemoveAppliedHandles(AppliedHandles);
+			const int32 OldStackCount = GetRuntimeInstanceCount(RuntimeInstance.CardDefinition);
+			const FSurvivorCardBehaviorContext Context = BuildBehaviorContext(RuntimeInstance.CardDefinition, OldStackCount, RuntimeInstance.RuntimeInstanceId);
+			for (USurvivorCardBehavior* Behavior : RuntimeInstance.CardDefinition->Behaviors)
+			{
+				if (Behavior)
+				{
+					Behavior->OnCardUnequipped(Context, RuntimeInstance.AppliedHandles);
+				}
+			}
 		}
+
+		RemoveAppliedHandles(RuntimeInstance.AppliedHandles);
 	}
 
+	EquippedCardRuntimeInstances.Reset();
 	EquippedCardEntries.Reset();
 	AggregatedCardTags.Reset();
 	RefreshBehaviorTickState();
@@ -308,15 +232,24 @@ void USurvivorCardLoadoutComponent::ClearCards()
 
 void USurvivorCardLoadoutComponent::NotifyRunStarted()
 {
-	for (const FSurvivorEquippedCardEntry& Entry : EquippedCardEntries)
+	for (const FSurvivorCardRuntimeInstance& RuntimeInstance : EquippedCardRuntimeInstances)
 	{
-		if (!Entry.CardDefinition || Entry.StackCount <= 0)
+		if (!RuntimeInstance.CardDefinition)
 		{
 			continue;
 		}
 
-		const FSurvivorCardBehaviorContext Context = BuildBehaviorContext(Entry.CardDefinition, Entry.StackCount);
-		for (USurvivorCardBehavior* Behavior : Entry.CardDefinition->Behaviors)
+		const int32 StackCount = GetRuntimeInstanceCount(RuntimeInstance.CardDefinition);
+		if (StackCount <= 0)
+		{
+			continue;
+		}
+
+		const FSurvivorCardBehaviorContext Context = BuildBehaviorContext(
+			RuntimeInstance.CardDefinition,
+			StackCount,
+			RuntimeInstance.RuntimeInstanceId);
+		for (USurvivorCardBehavior* Behavior : RuntimeInstance.CardDefinition->Behaviors)
 		{
 			if (Behavior)
 			{
@@ -328,19 +261,28 @@ void USurvivorCardLoadoutComponent::NotifyRunStarted()
 
 void USurvivorCardLoadoutComponent::NotifyEnemyKilled(AActor* KilledEnemyActor, int32 KillCountDelta)
 {
-	for (const FSurvivorEquippedCardEntry& Entry : EquippedCardEntries)
+	for (const FSurvivorCardRuntimeInstance& RuntimeInstance : EquippedCardRuntimeInstances)
 	{
-		if (!Entry.CardDefinition || Entry.StackCount <= 0)
+		if (!RuntimeInstance.CardDefinition)
+		{
+			continue;
+		}
+
+		const int32 StackCount = GetRuntimeInstanceCount(RuntimeInstance.CardDefinition);
+		if (StackCount <= 0)
 		{
 			continue;
 		}
 
 		FSurvivorCardEnemyKillContext Context;
-		Context.CardContext = BuildBehaviorContext(Entry.CardDefinition, Entry.StackCount);
+		Context.CardContext = BuildBehaviorContext(
+			RuntimeInstance.CardDefinition,
+			StackCount,
+			RuntimeInstance.RuntimeInstanceId);
 		Context.KilledEnemyActor = KilledEnemyActor;
 		Context.KillCountDelta = KillCountDelta;
 
-		for (USurvivorCardBehavior* Behavior : Entry.CardDefinition->Behaviors)
+		for (USurvivorCardBehavior* Behavior : RuntimeInstance.CardDefinition->Behaviors)
 		{
 			if (Behavior)
 			{
@@ -352,12 +294,7 @@ void USurvivorCardLoadoutComponent::NotifyEnemyKilled(AActor* KilledEnemyActor, 
 
 int32 USurvivorCardLoadoutComponent::GetUsedCardSlots() const
 {
-	int32 UsedSlots = 0;
-	for (const FSurvivorEquippedCardEntry& Entry : EquippedCardEntries)
-	{
-		UsedSlots += Entry.StackCount;
-	}
-	return UsedSlots;
+	return EquippedCardRuntimeInstances.Num();
 }
 
 bool USurvivorCardLoadoutComponent::HasFreeCardSlot() const
@@ -375,15 +312,101 @@ const TArray<FSurvivorEquippedCardEntry>& USurvivorCardLoadoutComponent::GetEqui
 	return EquippedCardEntries;
 }
 
+const TArray<FSurvivorCardRuntimeInstance>& USurvivorCardLoadoutComponent::GetEquippedCardRuntimeInstances() const
+{
+	return EquippedCardRuntimeInstances;
+}
+
+const FSurvivorCardRuntimeInstance* USurvivorCardLoadoutComponent::FindCardRuntimeInstanceById(int32 RuntimeInstanceId) const
+{
+	for (const FSurvivorCardRuntimeInstance& RuntimeInstance : EquippedCardRuntimeInstances)
+	{
+		if (RuntimeInstance.RuntimeInstanceId == RuntimeInstanceId)
+		{
+			return &RuntimeInstance;
+		}
+	}
+
+	return nullptr;
+}
+
+FSurvivorCardRuntimeState* USurvivorCardLoadoutComponent::FindMutableCardRuntimeState(int32 RuntimeInstanceId)
+{
+	for (FSurvivorCardRuntimeInstance& RuntimeInstance : EquippedCardRuntimeInstances)
+	{
+		if (RuntimeInstance.RuntimeInstanceId == RuntimeInstanceId)
+		{
+			return &RuntimeInstance.RuntimeState;
+		}
+	}
+
+	return nullptr;
+}
+
+USurvivorCardRuntimeData* USurvivorCardLoadoutComponent::FindCardRuntimeData(int32 RuntimeInstanceId, FName StateId) const
+{
+	if (StateId.IsNone())
+	{
+		return nullptr;
+	}
+
+	const FSurvivorCardRuntimeInstance* RuntimeInstance = FindCardRuntimeInstanceById(RuntimeInstanceId);
+	if (!RuntimeInstance)
+	{
+		return nullptr;
+	}
+
+	for (const FSurvivorCardRuntimeDataEntry& Entry : RuntimeInstance->RuntimeState.RuntimeDataEntries)
+	{
+		if (Entry.StateId == StateId)
+		{
+			return Entry.RuntimeData;
+		}
+	}
+
+	return nullptr;
+}
+
+USurvivorCardRuntimeData* USurvivorCardLoadoutComponent::FindOrAddCardRuntimeData(int32 RuntimeInstanceId, FName StateId, TSubclassOf<USurvivorCardRuntimeData> RuntimeDataClass)
+{
+	if (StateId.IsNone() || !RuntimeDataClass)
+	{
+		return nullptr;
+	}
+
+	for (FSurvivorCardRuntimeInstance& RuntimeInstance : EquippedCardRuntimeInstances)
+	{
+		if (RuntimeInstance.RuntimeInstanceId != RuntimeInstanceId)
+		{
+			continue;
+		}
+
+		for (FSurvivorCardRuntimeDataEntry& Entry : RuntimeInstance.RuntimeState.RuntimeDataEntries)
+		{
+			if (Entry.StateId == StateId)
+			{
+				return Entry.RuntimeData;
+			}
+		}
+
+		FSurvivorCardRuntimeDataEntry& NewEntry = RuntimeInstance.RuntimeState.RuntimeDataEntries.AddDefaulted_GetRef();
+		NewEntry.StateId = StateId;
+		NewEntry.RuntimeData = NewObject<USurvivorCardRuntimeData>(this, RuntimeDataClass);
+		return NewEntry.RuntimeData;
+	}
+
+	return nullptr;
+}
+
 void USurvivorCardLoadoutComponent::RecalculateAggregatedCardTags()
 {
 	AggregatedCardTags.Reset();
 
-	for (const FSurvivorEquippedCardEntry& Entry : EquippedCardEntries)
+	for (const FSurvivorCardRuntimeInstance& RuntimeInstance : EquippedCardRuntimeInstances)
 	{
-		if (Entry.CardDefinition && Entry.StackCount > 0)
+		if (RuntimeInstance.CardDefinition)
 		{
-			AggregatedCardTags.AppendTags(Entry.CardDefinition->CardTags);
+			AggregatedCardTags.AppendTags(RuntimeInstance.CardDefinition->CardTags);
 		}
 	}
 }
@@ -398,16 +421,6 @@ void USurvivorCardLoadoutComponent::PrintCardTagSummary() const
 		*Summary);
 
 	EmitCardDebugMessage(FString::Printf(TEXT("Card Tags: %s"), *Summary), FColor::Cyan);
-}
-
-int32 USurvivorCardLoadoutComponent::GetGrantedStartingWeaponCount() const
-{
-	return GrantedStartingWeapons.Num();
-}
-
-int32 USurvivorCardLoadoutComponent::GetGrantedStartingAbilitySetCount() const
-{
-	return GrantedStartingAbilitySetHandles.Num();
 }
 
 int32 USurvivorCardLoadoutComponent::GetMaxCardSlots() const
@@ -440,7 +453,7 @@ UAbilitySystemComponent* USurvivorCardLoadoutComponent::ResolveOwnerASC() const
 	return nullptr;
 }
 
-FSurvivorCardBehaviorContext USurvivorCardLoadoutComponent::BuildBehaviorContext(USurvivorCardDefinition* CardDefinition, int32 StackCount) const
+FSurvivorCardBehaviorContext USurvivorCardLoadoutComponent::BuildBehaviorContext(USurvivorCardDefinition* CardDefinition, int32 StackCount, int32 RuntimeCardInstanceId) const
 {
 	FSurvivorCardBehaviorContext Context;
 	Context.OwnerActor = GetOwner();
@@ -450,14 +463,16 @@ FSurvivorCardBehaviorContext USurvivorCardLoadoutComponent::BuildBehaviorContext
 	{
 		Context.Pawn = Context.PlayerState->GetPawn();
 	}
+
 	Context.AbilitySystemComponent = ResolveOwnerASC();
 	Context.LoadoutComponent = const_cast<USurvivorCardLoadoutComponent*>(this);
 	Context.CardDefinition = CardDefinition;
+	Context.RuntimeCardInstanceId = RuntimeCardInstanceId;
 	Context.StackCount = StackCount;
 	return Context;
 }
 
-bool USurvivorCardLoadoutComponent::ApplyCardStack(USurvivorCardDefinition* CardDefinition, FSurvivorAppliedCardHandles& OutAppliedHandles)
+bool USurvivorCardLoadoutComponent::ApplyCardStack(USurvivorCardDefinition* CardDefinition, int32 NewStackCount, FSurvivorAppliedCardHandles& OutAppliedHandles, int32 RuntimeCardInstanceId)
 {
 	UAbilitySystemComponent* ASC = ResolveOwnerASC();
 	if (!ASC)
@@ -513,7 +528,7 @@ bool USurvivorCardLoadoutComponent::ApplyCardStack(USurvivorCardDefinition* Card
 		OutAppliedHandles.ActiveEffectHandles.Append(GrantedHandles.ActiveEffectHandles);
 	}
 
-	const FSurvivorCardBehaviorContext BehaviorContext = BuildBehaviorContext(CardDefinition, FindCardEntry(CardDefinition) ? FindCardEntry(CardDefinition)->StackCount + 1 : 1);
+	const FSurvivorCardBehaviorContext BehaviorContext = BuildBehaviorContext(CardDefinition, NewStackCount, RuntimeCardInstanceId);
 	for (USurvivorCardBehavior* Behavior : CardDefinition->Behaviors)
 	{
 		if (!Behavior)
@@ -524,10 +539,11 @@ bool USurvivorCardLoadoutComponent::ApplyCardStack(USurvivorCardDefinition* Card
 
 		if (!Behavior->OnCardEquipped(BehaviorContext, OutAppliedHandles))
 		{
-			UE_LOG(LogSurvivorArena, Warning, TEXT("Card behavior equip failed. Owner=%s Card=%s Behavior=%s"),
+			UE_LOG(LogSurvivorArena, Warning, TEXT("Card behavior equip failed. Owner=%s Card=%s Behavior=%s RuntimeInstanceId=%d"),
 				*GetNameSafe(GetOwner()),
 				*GetNameSafe(CardDefinition),
-				*GetNameSafe(Behavior));
+				*GetNameSafe(Behavior),
+				RuntimeCardInstanceId);
 			RemoveAppliedHandles(OutAppliedHandles);
 			OutAppliedHandles.Reset();
 			return false;
@@ -573,14 +589,14 @@ void USurvivorCardLoadoutComponent::RemoveAppliedHandles(const FSurvivorAppliedC
 void USurvivorCardLoadoutComponent::RefreshBehaviorTickState()
 {
 	bool bNeedsTick = false;
-	for (const FSurvivorEquippedCardEntry& Entry : EquippedCardEntries)
+	for (const FSurvivorCardRuntimeInstance& RuntimeInstance : EquippedCardRuntimeInstances)
 	{
-		if (!Entry.CardDefinition || Entry.StackCount <= 0)
+		if (!RuntimeInstance.CardDefinition)
 		{
 			continue;
 		}
 
-		for (USurvivorCardBehavior* Behavior : Entry.CardDefinition->Behaviors)
+		for (USurvivorCardBehavior* Behavior : RuntimeInstance.CardDefinition->Behaviors)
 		{
 			if (Behavior && Behavior->bReceivesBehaviorTick)
 			{
@@ -656,24 +672,94 @@ FString USurvivorCardLoadoutComponent::BuildEquippedCardsSummaryString() const
 	return Summary.IsEmpty() ? TEXT("<None>") : Summary;
 }
 
+void USurvivorCardLoadoutComponent::RebuildEquippedCardEntries()
+{
+	EquippedCardEntries.Reset();
+
+	for (const FSurvivorCardRuntimeInstance& RuntimeInstance : EquippedCardRuntimeInstances)
+	{
+		if (!RuntimeInstance.CardDefinition)
+		{
+			continue;
+		}
+
+		FSurvivorEquippedCardEntry* ExistingEntry = FindCardEntry(RuntimeInstance.CardDefinition);
+		if (!ExistingEntry)
+		{
+			FSurvivorEquippedCardEntry& NewEntry = EquippedCardEntries.AddDefaulted_GetRef();
+			NewEntry.CardDefinition = RuntimeInstance.CardDefinition;
+			NewEntry.StackCount = 1;
+			NewEntry.RuntimeInstanceIds.Add(RuntimeInstance.RuntimeInstanceId);
+			continue;
+		}
+
+		ExistingEntry->StackCount += 1;
+		ExistingEntry->RuntimeInstanceIds.Add(RuntimeInstance.RuntimeInstanceId);
+	}
+}
+
+TArray<int32> USurvivorCardLoadoutComponent::GatherRuntimeInstanceIds(USurvivorCardDefinition* CardDefinition) const
+{
+	TArray<int32> RuntimeInstanceIds;
+	for (const FSurvivorCardRuntimeInstance& RuntimeInstance : EquippedCardRuntimeInstances)
+	{
+		if (RuntimeInstance.CardDefinition == CardDefinition)
+		{
+			RuntimeInstanceIds.Add(RuntimeInstance.RuntimeInstanceId);
+		}
+	}
+
+	return RuntimeInstanceIds;
+}
+
+int32 USurvivorCardLoadoutComponent::GetRuntimeInstanceCount(USurvivorCardDefinition* CardDefinition) const
+{
+	int32 InstanceCount = 0;
+	for (const FSurvivorCardRuntimeInstance& RuntimeInstance : EquippedCardRuntimeInstances)
+	{
+		if (RuntimeInstance.CardDefinition == CardDefinition)
+		{
+			++InstanceCount;
+		}
+	}
+
+	return InstanceCount;
+}
+
+int32 USurvivorCardLoadoutComponent::FindLastRuntimeInstanceIndex(USurvivorCardDefinition* CardDefinition) const
+{
+	for (int32 Index = EquippedCardRuntimeInstances.Num() - 1; Index >= 0; --Index)
+	{
+		if (EquippedCardRuntimeInstances[Index].CardDefinition == CardDefinition)
+		{
+			return Index;
+		}
+	}
+
+	return INDEX_NONE;
+}
+
 void USurvivorCardLoadoutComponent::BroadcastLoadoutChanged()
 {
 	LoadoutChangedEvent.Broadcast(this);
 }
 
-void USurvivorCardLoadoutComponent::BroadcastCardStackChanged(USurvivorCardDefinition* CardDefinition, int32 OldStackCount, int32 NewStackCount)
+void USurvivorCardLoadoutComponent::BroadcastCardStackChanged(USurvivorCardDefinition* CardDefinition, int32 OldStackCount, int32 NewStackCount, const TArray<int32>& RuntimeInstanceIds)
 {
 	if (!CardDefinition)
 	{
 		return;
 	}
 
-	const FSurvivorCardBehaviorContext Context = BuildBehaviorContext(CardDefinition, NewStackCount);
-	for (USurvivorCardBehavior* Behavior : CardDefinition->Behaviors)
+	for (const int32 RuntimeInstanceId : RuntimeInstanceIds)
 	{
-		if (Behavior)
+		const FSurvivorCardBehaviorContext Context = BuildBehaviorContext(CardDefinition, NewStackCount, RuntimeInstanceId);
+		for (USurvivorCardBehavior* Behavior : CardDefinition->Behaviors)
 		{
-			Behavior->OnCardStackChanged(Context, OldStackCount, NewStackCount);
+			if (Behavior)
+			{
+				Behavior->OnCardStackChanged(Context, OldStackCount, NewStackCount);
+			}
 		}
 	}
 }

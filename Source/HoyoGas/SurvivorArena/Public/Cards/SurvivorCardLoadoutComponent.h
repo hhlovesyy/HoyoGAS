@@ -3,14 +3,12 @@
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
 #include "Cards/SurvivorCardRuntimeTypes.h"
-#include "GAS/SurvivorAbilitySet.h"
 #include "GameplayTagContainer.h"
-#include "Weapons/SurvivorWeaponManagerComponent.h"
 #include "SurvivorCardLoadoutComponent.generated.h"
 
 class UAbilitySystemComponent;
 class USurvivorCardDefinition;
-class USurvivorWeaponManagerComponent;
+class USurvivorCardRuntimeData;
 
 DECLARE_MULTICAST_DELEGATE_OneParam(FOnSurvivorLoadoutChanged, class USurvivorCardLoadoutComponent*);
 
@@ -27,7 +25,7 @@ public:
 	int32 StackCount = 0;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "SurvivorArena")
-	TArray<FSurvivorAppliedCardHandles> AppliedStacks;
+	TArray<int32> RuntimeInstanceIds;
 };
 
 UCLASS(ClassGroup=(Survivor), meta=(BlueprintSpawnableComponent))
@@ -41,9 +39,6 @@ public:
 	virtual void BeginPlay() override;
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
-	bool GrantStartingAbilitySet(USurvivorAbilitySet* AbilitySet, UObject* SourceObject);
-	bool GrantStartingWeapon(USurvivorWeaponDefinition* WeaponDefinition, USurvivorWeaponManagerComponent* WeaponManager);
-	void ClearStartingLoadout(USurvivorWeaponManagerComponent* WeaponManager);
 	void NotifyRunStarted();
 	void NotifyEnemyKilled(AActor* KilledEnemyActor, int32 KillCountDelta = 1);
 
@@ -68,17 +63,17 @@ public:
 	UFUNCTION(BlueprintPure, Category = "SurvivorArena|Cards")
 	const TArray<FSurvivorEquippedCardEntry>& GetEquippedCardEntries() const;
 
+	const TArray<FSurvivorCardRuntimeInstance>& GetEquippedCardRuntimeInstances() const;
+	const FSurvivorCardRuntimeInstance* FindCardRuntimeInstanceById(int32 RuntimeInstanceId) const;
+	FSurvivorCardRuntimeState* FindMutableCardRuntimeState(int32 RuntimeInstanceId);
+	USurvivorCardRuntimeData* FindCardRuntimeData(int32 RuntimeInstanceId, FName StateId) const;
+	USurvivorCardRuntimeData* FindOrAddCardRuntimeData(int32 RuntimeInstanceId, FName StateId, TSubclassOf<USurvivorCardRuntimeData> RuntimeDataClass);
+
 	UFUNCTION(BlueprintCallable, Category = "SurvivorArena|Cards")
 	void RecalculateAggregatedCardTags();
 
 	UFUNCTION(BlueprintCallable, Category = "SurvivorArena|Cards")
 	void PrintCardTagSummary() const;
-
-	UFUNCTION(BlueprintPure, Category = "SurvivorArena|Loadout")
-	int32 GetGrantedStartingWeaponCount() const;
-
-	UFUNCTION(BlueprintPure, Category = "SurvivorArena|Loadout")
-	int32 GetGrantedStartingAbilitySetCount() const;
 
 	UFUNCTION(BlueprintPure, Category = "SurvivorArena|Cards")
 	int32 GetMaxCardSlots() const;
@@ -93,15 +88,19 @@ public:
 
 protected:
 	UAbilitySystemComponent* ResolveOwnerASC() const;
-	FSurvivorCardBehaviorContext BuildBehaviorContext(USurvivorCardDefinition* CardDefinition, int32 StackCount) const;
-	bool ApplyCardStack(USurvivorCardDefinition* CardDefinition, FSurvivorAppliedCardHandles& OutAppliedHandles);
+	FSurvivorCardBehaviorContext BuildBehaviorContext(USurvivorCardDefinition* CardDefinition, int32 StackCount, int32 RuntimeCardInstanceId = INDEX_NONE) const;
+	bool ApplyCardStack(USurvivorCardDefinition* CardDefinition, int32 NewStackCount, FSurvivorAppliedCardHandles& OutAppliedHandles, int32 RuntimeCardInstanceId);
 	void RemoveAppliedHandles(const FSurvivorAppliedCardHandles& AppliedHandles);
 	void RefreshBehaviorTickState();
-	void BroadcastCardStackChanged(USurvivorCardDefinition* CardDefinition, int32 OldStackCount, int32 NewStackCount);
+	void BroadcastCardStackChanged(USurvivorCardDefinition* CardDefinition, int32 OldStackCount, int32 NewStackCount, const TArray<int32>& RuntimeInstanceIds);
 	void BroadcastLoadoutChanged();
 	void EmitCardDebugMessage(const FString& Message, const FColor& Color) const;
 	FString BuildCardTagSummaryString() const;
 	FString BuildEquippedCardsSummaryString() const;
+	void RebuildEquippedCardEntries();
+	TArray<int32> GatherRuntimeInstanceIds(USurvivorCardDefinition* CardDefinition) const;
+	int32 GetRuntimeInstanceCount(USurvivorCardDefinition* CardDefinition) const;
+	int32 FindLastRuntimeInstanceIndex(USurvivorCardDefinition* CardDefinition) const;
 	FSurvivorEquippedCardEntry* FindCardEntry(USurvivorCardDefinition* CardDefinition);
 	const FSurvivorEquippedCardEntry* FindCardEntry(USurvivorCardDefinition* CardDefinition) const;
 
@@ -115,13 +114,11 @@ protected:
 	TArray<FSurvivorEquippedCardEntry> EquippedCardEntries;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "SurvivorArena|Cards")
+	TArray<FSurvivorCardRuntimeInstance> EquippedCardRuntimeInstances;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "SurvivorArena|Cards")
 	FGameplayTagContainer AggregatedCardTags;
 
-	UPROPERTY(Transient)
-	TArray<FSurvivorGrantedAbilitySetHandles> GrantedStartingAbilitySetHandles;
-
-	UPROPERTY(Transient)
-	TArray<FSurvivorGrantedWeaponHandles> GrantedStartingWeapons;
-
 	FOnSurvivorLoadoutChanged LoadoutChangedEvent;
+	int32 NextRuntimeCardInstanceId = 1;
 };

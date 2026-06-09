@@ -14,6 +14,9 @@
 #include "Pickups/SurvivorPickupDefinition.h"
 #include "Pooling/SurvivorActorPoolSubsystem.h"
 #include "TimerManager.h"
+#include "Cards/SurvivorCardLoadoutComponent.h"
+#include "GameFramework/PlayerController.h"
+#include "Player/SurvivorPlayerState.h"
 
 ASurvivorDummyEnemy::ASurvivorDummyEnemy()
 {
@@ -70,6 +73,11 @@ void ASurvivorDummyEnemy::BeginPlay()
 UAbilitySystemComponent* ASurvivorDummyEnemy::GetAbilitySystemComponent() const
 {
 	return AbilitySystemComponent;
+}
+
+const FSurvivorEnemyDefinitionRow* ASurvivorDummyEnemy::GetEnemyDefinition() const
+{
+	return ResolveEnemyDefinition();
 }
 
 void ASurvivorDummyEnemy::HandleHealthChanged(const FOnAttributeChangeData& ChangeData)
@@ -211,6 +219,26 @@ void ASurvivorDummyEnemy::SpawnConfiguredDrops()
 	}
 }
 
+void ASurvivorDummyEnemy::NotifyPlayerCardLoadoutsEnemyKilled()
+{
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		return;
+	}
+
+	for (FConstPlayerControllerIterator Iterator = World->GetPlayerControllerIterator(); Iterator; ++Iterator)
+	{
+		APlayerController* PlayerController = Iterator->Get();
+		ASurvivorPlayerState* SurvivorPlayerState = PlayerController ? PlayerController->GetPlayerState<ASurvivorPlayerState>() : nullptr;
+		USurvivorCardLoadoutComponent* LoadoutComponent = SurvivorPlayerState ? SurvivorPlayerState->GetLoadoutComponent() : nullptr;
+		if (LoadoutComponent)
+		{
+			LoadoutComponent->NotifyEnemyKilled(this);
+		}
+	}
+}
+
 void ASurvivorDummyEnemy::Die()
 {
 	if (bIsDead)
@@ -221,6 +249,7 @@ void ASurvivorDummyEnemy::Die()
 	bIsDead = true;
 	ResetHitFeedback();
 	SpawnConfiguredDrops();
+	NotifyPlayerCardLoadoutsEnemyKilled();
 	UE_LOG(LogSurvivorArena, Log, TEXT("DummyEnemy died. Enemy=%s"), *GetNameSafe(this));
 	Destroy();
 }
