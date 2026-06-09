@@ -9,6 +9,7 @@ class APawn;
 class AActor;
 class UGameplayEffect;
 class UTexture2D;
+class USurvivorPickupDefinition;
 class USurvivorAbilitySet;
 class USurvivorWeaponDefinition;
 
@@ -37,6 +38,14 @@ enum class ESurvivorRewardType : uint8
 	UpgradeWeapon,
 	Heal,
 	AddCurrency
+};
+
+UENUM(BlueprintType)
+enum class ESurvivorPickupType : uint8
+{
+	None,
+	Coin,
+	Experience
 };
 
 USTRUCT(BlueprintType)
@@ -134,6 +143,27 @@ struct HOYOGAS_API FSurvivorRewardDefinitionRow : public FTableRowBase
 };
 
 USTRUCT(BlueprintType)
+struct HOYOGAS_API FSurvivorPickupDropEntry
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "SurvivorArena")
+	TSoftObjectPtr<USurvivorPickupDefinition> PickupDefinition;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "SurvivorArena", meta = (ClampMin = "0.0", ClampMax = "1.0"))
+	float DropChance = 1.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "SurvivorArena", meta = (ClampMin = "0"))
+	int32 MinCount = 1;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "SurvivorArena", meta = (ClampMin = "0"))
+	int32 MaxCount = 1;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "SurvivorArena", meta = (ClampMin = "0.0"))
+	float SpawnRadius = 50.0f;
+};
+
+USTRUCT(BlueprintType)
 struct HOYOGAS_API FSurvivorEnemyDefinitionRow : public FTableRowBase
 {
 	GENERATED_BODY()
@@ -161,6 +191,9 @@ struct HOYOGAS_API FSurvivorEnemyDefinitionRow : public FTableRowBase
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "SurvivorArena")
 	int32 CoinDrop = 0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "SurvivorArena")
+	TArray<FSurvivorPickupDropEntry> PickupDrops;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "SurvivorArena")
 	FGameplayTagContainer EnemyTags;

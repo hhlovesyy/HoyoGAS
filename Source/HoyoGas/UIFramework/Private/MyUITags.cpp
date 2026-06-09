@@ -6,6 +6,7 @@ namespace MyUITags
 	UE_DEFINE_GAMEPLAY_TAG(UI_Store_Progression, "UI.Store.Progression");
 	UE_DEFINE_GAMEPLAY_TAG(UI_Store_Battle, "UI.Store.Battle");
 	UE_DEFINE_GAMEPLAY_TAG(UI_Store_PlayerVitals, "UI.Store.PlayerVitals");
+	UE_DEFINE_GAMEPLAY_TAG(UI_Store_SurvivorHUD, "UI.Store.SurvivorHUD");
 
 	UE_DEFINE_GAMEPLAY_TAG(UI_Event_LevelUp, "UI.Event.LevelUp");
 	UE_DEFINE_GAMEPLAY_TAG(UI_Event_ShowToast, "UI.Event.ShowToast");

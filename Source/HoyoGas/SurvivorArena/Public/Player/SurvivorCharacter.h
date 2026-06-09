@@ -11,6 +11,7 @@ class USceneComponent;
 class UStaticMeshComponent;
 class USkeletalMeshComponent;
 class USurvivorAbilitySystemComponent;
+class USurvivorPickupCollectorComponent;
 class USurvivorWeaponManagerComponent;
 
 UCLASS()
@@ -35,6 +36,7 @@ public:
 	USceneComponent* GetCameraPivot() const;
 	FVector GetCameraPivotLocation() const;
 	USurvivorWeaponManagerComponent* GetWeaponManagerComponent() const;
+	USurvivorPickupCollectorComponent* GetPickupCollectorComponent() const;
 
 protected:
 	void InitAbilityActorInfo();
@@ -64,6 +66,9 @@ protected:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Survivor|Weapons", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<USurvivorWeaponManagerComponent> WeaponManagerComponent;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Survivor|Pickup", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<USurvivorPickupCollectorComponent> PickupCollectorComponent;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "SurvivorArena|Visual", meta = (AllowPrivateAccess = "true"))
 	FName HeadAttachmentSocketName = TEXT("HeadDecalSocket");

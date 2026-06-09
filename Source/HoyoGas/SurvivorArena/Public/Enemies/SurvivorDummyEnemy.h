@@ -11,6 +11,7 @@ class UStaticMeshComponent;
 class USceneComponent;
 class USurvivorAbilitySystemComponent;
 class USurvivorAttributeSet;
+struct FSurvivorEnemyDefinitionRow;
 
 UCLASS()
 class HOYOGAS_API ASurvivorDummyEnemy : public AActor, public IAbilitySystemInterface
@@ -28,6 +29,8 @@ protected:
 	void PlayHitFeedback();
 	void ResetHitFeedback();
 	void DrawHealthDebug(float CurrentHealth) const;
+	void SpawnConfiguredDrops();
+	const FSurvivorEnemyDefinitionRow* ResolveEnemyDefinition() const;
 	void Die();
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Survivor|Enemy", meta = (AllowPrivateAccess = "true"))
@@ -53,6 +56,9 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Survivor|Enemy")
 	float HitFeedbackScaleMultiplier = 1.12f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Survivor|Enemy")
+	FName EnemyDefinitionId = NAME_None;
 
 	UPROPERTY(Transient)
 	bool bIsDead = false;

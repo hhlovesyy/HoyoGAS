@@ -4,9 +4,15 @@
 #include "Components/SceneComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Core/SurvivorArenaLog.h"
+#include "Core/SurvivorArenaSettings.h"
+#include "Data/SurvivorArenaTypes.h"
 #include "DrawDebugHelpers.h"
+#include "Engine/DataTable.h"
 #include "GAS/SurvivorAbilitySystemComponent.h"
 #include "GAS/SurvivorAttributeSet.h"
+#include "Pickups/SurvivorPickupActor.h"
+#include "Pickups/SurvivorPickupDefinition.h"
+#include "Pooling/SurvivorActorPoolSubsystem.h"
 #include "TimerManager.h"
 
 ASurvivorDummyEnemy::ASurvivorDummyEnemy()
@@ -127,6 +133,84 @@ void ASurvivorDummyEnemy::DrawHealthDebug(float CurrentHealth) const
 		false);
 }
 
+const FSurvivorEnemyDefinitionRow* ASurvivorDummyEnemy::ResolveEnemyDefinition() const
+{
+	if (EnemyDefinitionId.IsNone())
+	{
+		return nullptr;
+	}
+
+	const USurvivorArenaSettings* Settings = GetDefault<USurvivorArenaSettings>();
+	UDataTable* EnemyDefinitionTable = Settings ? Settings->EnemyDefinitionTable.LoadSynchronous() : nullptr;
+	if (!EnemyDefinitionTable)
+	{
+		UE_LOG(LogSurvivorArena, Warning, TEXT("DummyEnemy %s could not resolve enemy definition because EnemyDefinitionTable is null."), *GetNameSafe(this));
+		return nullptr;
+	}
+
+	return EnemyDefinitionTable->FindRow<FSurvivorEnemyDefinitionRow>(EnemyDefinitionId, TEXT("ASurvivorDummyEnemy::ResolveEnemyDefinition"));
+}
+
+void ASurvivorDummyEnemy::SpawnConfiguredDrops()
+{
+	const FSurvivorEnemyDefinitionRow* EnemyDefinition = ResolveEnemyDefinition();
+	if (!EnemyDefinition || EnemyDefinition->PickupDrops.IsEmpty())
+	{
+		return;
+	}
+
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		return;
+	}
+
+	USurvivorActorPoolSubsystem* PoolSubsystem = World->GetSubsystem<USurvivorActorPoolSubsystem>();
+	FRandomStream RandomStream(FMath::Rand());
+
+	for (const FSurvivorPickupDropEntry& DropEntry : EnemyDefinition->PickupDrops)
+	{
+		if (DropEntry.PickupDefinition.IsNull())
+		{
+			continue;
+		}
+
+		if (RandomStream.FRand() > DropEntry.DropChance)
+		{
+			continue;
+		}
+
+		USurvivorPickupDefinition* PickupDefinition = DropEntry.PickupDefinition.LoadSynchronous();
+		if (!PickupDefinition)
+		{
+			UE_LOG(LogSurvivorArena, Warning, TEXT("DummyEnemy %s failed to load pickup definition for drop entry."), *GetNameSafe(this));
+			continue;
+		}
+
+		FString ValidationError;
+		if (!PickupDefinition->ValidateDefinition(&ValidationError))
+		{
+			UE_LOG(LogSurvivorArena, Warning, TEXT("DummyEnemy %s pickup definition '%s' is invalid: %s"), *GetNameSafe(this), *GetNameSafe(PickupDefinition), *ValidationError);
+			continue;
+		}
+
+		const int32 SpawnCount = FMath::Max(DropEntry.MinCount, DropEntry.MaxCount > DropEntry.MinCount ? RandomStream.RandRange(DropEntry.MinCount, DropEntry.MaxCount) : DropEntry.MinCount);
+		for (int32 SpawnIndex = 0; SpawnIndex < SpawnCount; ++SpawnIndex)
+		{
+			const FVector RandomOffset = FVector(RandomStream.FRandRange(-DropEntry.SpawnRadius, DropEntry.SpawnRadius), RandomStream.FRandRange(-DropEntry.SpawnRadius, DropEntry.SpawnRadius), 0.0f);
+			const FTransform SpawnTransform(GetActorTransform().GetRotation(), GetActorLocation() + RandomOffset, FVector::OneVector);
+			AActor* SpawnedActor = PoolSubsystem
+				? PoolSubsystem->AcquireActor(PickupDefinition->PickupActorClass, SpawnTransform)
+				: World->SpawnActor<AActor>(PickupDefinition->PickupActorClass, SpawnTransform);
+
+			if (ASurvivorPickupActor* PickupActor = Cast<ASurvivorPickupActor>(SpawnedActor))
+			{
+				PickupActor->InitializePickup(PickupDefinition, PickupDefinition->BaseValue);
+			}
+		}
+	}
+}
+
 void ASurvivorDummyEnemy::Die()
 {
 	if (bIsDead)
@@ -136,6 +220,7 @@ void ASurvivorDummyEnemy::Die()
 
 	bIsDead = true;
 	ResetHitFeedback();
+	SpawnConfiguredDrops();
 	UE_LOG(LogSurvivorArena, Log, TEXT("DummyEnemy died. Enemy=%s"), *GetNameSafe(this));
 	Destroy();
 }

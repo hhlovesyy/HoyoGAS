@@ -3,10 +3,12 @@
 #include "Core/SurvivorArenaLog.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
+#include "GameFramework/PlayerState.h"
 #include "InputActionValue.h"
 #include "Player/SurvivorCharacter.h"
 #include "Player/SurvivorPlayerCameraManager.h"
 #include "Subsystems/MyPlayerUISubsystem.h"
+#include "Subsystems/MyUIStoreSubsystem.h"
 #include "UI/SurvivorUIConstants.h"
 #include "UIFrameworkTypes.h"
 //PlayerController（私密的）：只存在于服务器和控制该角色的本地客户端。假设房间里有 4 个玩家，你的电脑里只有 1 个 PlayerController（你自己的）。你绝对拿不到其他 3 个玩家的 Controller，因为那是他们的“私密大脑”，里面包含输入按键和 UI。
@@ -189,10 +191,23 @@ void ASurvivorPlayerController::InitializeSurvivorUI()
 {
 	ULocalPlayer* LocalPlayer = GetLocalPlayer();
 	UMyPlayerUISubsystem* PlayerUISubsystem = LocalPlayer ? ULocalPlayer::GetSubsystem<UMyPlayerUISubsystem>(LocalPlayer) : nullptr;
+	UMyUIStoreSubsystem* StoreSubsystem = LocalPlayer ? ULocalPlayer::GetSubsystem<UMyUIStoreSubsystem>(LocalPlayer) : nullptr;
 	if (!PlayerUISubsystem)
 	{
 		UE_LOG(LogSurvivorArena, Warning, TEXT("Survivor UI initialization skipped because MyPlayerUISubsystem is unavailable."));
 		return;
+	}
+
+	if (StoreSubsystem)
+	{
+		StoreSubsystem->RefreshPlayerContext();
+		UE_LOG(LogSurvivorArena, Log, TEXT("Survivor UI store context refreshed before opening HUD. Pawn=%s PlayerState=%s"),
+			*GetNameSafe(GetPawn()),
+			*GetNameSafe(PlayerState.Get()));
+	}
+	else
+	{
+		UE_LOG(LogSurvivorArena, Warning, TEXT("Survivor UI initialization could not refresh store context because MyUIStoreSubsystem is unavailable."));
 	}
 
 	PlayerUISubsystem->EnsureRootLayout();
@@ -209,6 +224,17 @@ void ASurvivorPlayerController::RefreshPossessedPawnState()
 
 	if (IsLocalController())  //在你的电脑上，只有你的 Controller 会返回 true，其他玩家的Controller不会进这里，避免多次打开UI之类的；
 	{
+		if (ULocalPlayer* LocalPlayer = GetLocalPlayer())
+		{
+			if (UMyUIStoreSubsystem* StoreSubsystem = ULocalPlayer::GetSubsystem<UMyUIStoreSubsystem>(LocalPlayer))
+			{
+				StoreSubsystem->RefreshPlayerContext();
+				UE_LOG(LogSurvivorArena, Log, TEXT("Survivor UI store context refreshed after possession. Pawn=%s PlayerState=%s"),
+					*GetNameSafe(GetPawn()),
+					*GetNameSafe(PlayerState.Get()));
+			}
+		}
+
 		InitializeSurvivorUI();
 	}
 }

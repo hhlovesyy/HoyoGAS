@@ -2,6 +2,7 @@
 
 #include "Cards/SurvivorCardLoadoutComponent.h"
 #include "Core/SurvivorArenaLog.h"
+#include "Economy/SurvivorRunEconomyComponent.h"
 #include "GAS/SurvivorAbilitySystemComponent.h"
 #include "GAS/SurvivorAttributeSet.h"
 #include "Net/UnrealNetwork.h"
@@ -19,6 +20,7 @@ ASurvivorPlayerState::ASurvivorPlayerState()
 
 	AttributeSet = CreateDefaultSubobject<USurvivorAttributeSet>(TEXT("AttributeSet"));
 	CardLoadoutComponent = CreateDefaultSubobject<USurvivorCardLoadoutComponent>(TEXT("CardLoadoutComponent"));
+	RunEconomyComponent = CreateDefaultSubobject<USurvivorRunEconomyComponent>(TEXT("RunEconomyComponent"));
 }
 
 void ASurvivorPlayerState::BeginPlay()
@@ -57,9 +59,19 @@ const USurvivorAttributeSet* ASurvivorPlayerState::GetSurvivorAttributeSet() con
 	return AttributeSet;
 }
 
+USurvivorCardLoadoutComponent* ASurvivorPlayerState::GetLoadoutComponent() const
+{
+	return CardLoadoutComponent;
+}
+
 USurvivorCardLoadoutComponent* ASurvivorPlayerState::GetCardLoadoutComponent() const
 {
 	return CardLoadoutComponent;
+}
+
+USurvivorRunEconomyComponent* ASurvivorPlayerState::GetRunEconomyComponent() const
+{
+	return RunEconomyComponent;
 }
 
 int32 ASurvivorPlayerState::GetSurvivorLevel() const

@@ -8,6 +8,7 @@
 class UGameplayEffect;
 class UTexture2D;
 class USurvivorAbilitySet;
+class USurvivorCardBehavior;
 
 UCLASS(BlueprintType)
 class HOYOGAS_API USurvivorCardDefinition : public UPrimaryDataAsset
@@ -42,6 +43,9 @@ public:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Card")
 	TArray<TObjectPtr<USurvivorAbilitySet>> AbilitySetsToGrant;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Instanced, Category = "Card")
+	TArray<TObjectPtr<USurvivorCardBehavior>> Behaviors;
 
 	bool ValidateDefinition(FString* OutError = nullptr) const;
 };

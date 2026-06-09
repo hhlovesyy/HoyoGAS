@@ -25,6 +25,14 @@ void USurvivorWeaponManagerComponent::EndPlay(const EEndPlayReason::Type EndPlay
 
 bool USurvivorWeaponManagerComponent::GrantWeapon(USurvivorWeaponDefinition* WeaponDefinition)
 {
+	FSurvivorGrantedWeaponHandles GrantedHandles;
+	return GrantWeaponAndCollect(WeaponDefinition, GrantedHandles);
+}
+
+bool USurvivorWeaponManagerComponent::GrantWeaponAndCollect(USurvivorWeaponDefinition* WeaponDefinition, FSurvivorGrantedWeaponHandles& OutGrantedHandles)
+{
+	OutGrantedHandles = FSurvivorGrantedWeaponHandles();
+
 	if (!WeaponDefinition)
 	{
 		UE_LOG(LogSurvivorArena, Error, TEXT("GrantWeapon failed because WeaponDefinition is null. Owner=%s"), *GetNameSafe(GetOwner()));
@@ -90,11 +98,14 @@ bool USurvivorWeaponManagerComponent::GrantWeapon(USurvivorWeaponDefinition* Wea
 	FSurvivorGrantedWeaponEntry& GrantedEntry = GrantedWeapons.AddDefaulted_GetRef();
 	GrantedEntry.WeaponDefinition = WeaponDefinition;
 	GrantedEntry.WeaponAbilityHandle = AbilityHandle;
+	OutGrantedHandles.WeaponDefinition = WeaponDefinition;
+	OutGrantedHandles.WeaponAbilityHandle = AbilityHandle;
 
 	UE_LOG(LogSurvivorArena, Log, TEXT("Weapon granted. Owner=%s WeaponId=%s Ability=%s"),
 		*GetNameSafe(GetOwner()),
 		*WeaponDefinition->WeaponId.ToString(),
 		*GetNameSafe(WeaponDefinition->WeaponAbility));
+	BroadcastWeaponsChanged();
 
 	if (WeaponDefinition->bAutoActivateOnGrant)
 	{
@@ -161,13 +172,48 @@ bool USurvivorWeaponManagerComponent::RemoveWeapon(USurvivorWeaponDefinition* We
 	UE_LOG(LogSurvivorArena, Log, TEXT("Weapon removed. Owner=%s WeaponId=%s"),
 		*GetNameSafe(GetOwner()),
 		*WeaponDefinition->WeaponId.ToString());
+	BroadcastWeaponsChanged();
 
 	return true;
+}
+
+bool USurvivorWeaponManagerComponent::RemoveWeaponByHandles(const FSurvivorGrantedWeaponHandles& GrantedHandles)
+{
+	if (!GrantedHandles.WeaponDefinition)
+	{
+		return false;
+	}
+
+	FSurvivorGrantedWeaponEntry* ExistingEntry = FindGrantedWeaponEntry(GrantedHandles.WeaponDefinition);
+	if (!ExistingEntry)
+	{
+		return false;
+	}
+
+	if (GrantedHandles.WeaponAbilityHandle.IsValid() && ExistingEntry->WeaponAbilityHandle != GrantedHandles.WeaponAbilityHandle)
+	{
+		UE_LOG(LogSurvivorArena, Warning, TEXT("RemoveWeaponByHandles found mismatched ability handle. Owner=%s Weapon=%s"),
+			*GetNameSafe(GetOwner()),
+			*GetNameSafe(GrantedHandles.WeaponDefinition));
+		return false;
+	}
+
+	return RemoveWeapon(GrantedHandles.WeaponDefinition);
 }
 
 bool USurvivorWeaponManagerComponent::HasWeapon(const USurvivorWeaponDefinition* WeaponDefinition) const
 {
 	return FindGrantedWeaponEntry(WeaponDefinition) != nullptr;
+}
+
+int32 USurvivorWeaponManagerComponent::GetGrantedWeaponCount() const
+{
+	return GrantedWeapons.Num();
+}
+
+FOnSurvivorWeaponsChanged& USurvivorWeaponManagerComponent::OnWeaponsChanged()
+{
+	return WeaponsChangedEvent;
 }
 
 UAbilitySystemComponent* USurvivorWeaponManagerComponent::GetOwningAbilitySystemComponent() const
@@ -212,4 +258,9 @@ void USurvivorWeaponManagerComponent::RemoveAllGrantedWeapons()
 	{
 		RemoveWeapon(WeaponDefinition);
 	}
+}
+
+void USurvivorWeaponManagerComponent::BroadcastWeaponsChanged()
+{
+	WeaponsChangedEvent.Broadcast(this);
 }

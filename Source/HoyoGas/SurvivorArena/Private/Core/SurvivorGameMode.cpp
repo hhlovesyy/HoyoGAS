@@ -217,10 +217,10 @@ bool ASurvivorGameMode::GrantStartingLoadoutToPlayer(APlayerController* PlayerCo
 		return false;
 	}
 
-	USurvivorCardLoadoutComponent* CardLoadoutComponent = SurvivorPlayerState->GetCardLoadoutComponent();
-	if (!CardLoadoutComponent)
+	USurvivorCardLoadoutComponent* LoadoutComponent = SurvivorPlayerState->GetLoadoutComponent();
+	if (!LoadoutComponent)
 	{
-		UE_LOG(LogSurvivorArena, Error, TEXT("GrantStartingLoadoutToPlayer failed because CardLoadoutComponent is null. PlayerState=%s"),
+		UE_LOG(LogSurvivorArena, Error, TEXT("GrantStartingLoadoutToPlayer failed because LoadoutComponent is null. PlayerState=%s"),
 			*GetNameSafe(SurvivorPlayerState));
 		return false;
 	}
@@ -289,7 +289,14 @@ bool ASurvivorGameMode::GrantStartingLoadoutToPlayer(APlayerController* PlayerCo
 
 	for (USurvivorAbilitySet* AbilitySet : CharacterDefinition->StartingAbilitySets)
 	{
-		AbilitySet->GiveToAbilitySystem(PlayerASC, SurvivorCharacter);
+		if (!LoadoutComponent->GrantStartingAbilitySet(AbilitySet, SurvivorCharacter))
+		{
+			UE_LOG(LogSurvivorArena, Error, TEXT("GrantStartingLoadoutToPlayer failed to grant StartingAbilitySet. Controller=%s CharacterId=%s AbilitySet=%s"),
+				*GetNameSafe(PlayerController),
+				*CurrentRunConfig.CharacterId.ToString(),
+				*GetNameSafe(AbilitySet));
+			return false;
+		}
 	}
 
 	USurvivorWeaponManagerComponent* WeaponManager = SurvivorCharacter->GetWeaponManagerComponent();
@@ -302,7 +309,7 @@ bool ASurvivorGameMode::GrantStartingLoadoutToPlayer(APlayerController* PlayerCo
 
 	for (USurvivorWeaponDefinition* WeaponDefinition : StartingWeaponDefinitions)
 	{
-		if (!WeaponManager->GrantWeapon(WeaponDefinition))
+		if (!LoadoutComponent->GrantStartingWeapon(WeaponDefinition, WeaponManager))
 		{
 			UE_LOG(LogSurvivorArena, Error, TEXT("GrantStartingLoadoutToPlayer failed to grant StartingWeapon. Controller=%s CharacterId=%s Weapon=%s"),
 				*GetNameSafe(PlayerController),
@@ -320,7 +327,7 @@ bool ASurvivorGameMode::GrantStartingLoadoutToPlayer(APlayerController* PlayerCo
 	{
 		for (USurvivorCardDefinition* CardDefinition : StartingCardDefinitions)
 		{
-			if (!CardLoadoutComponent->EquipCard(CardDefinition))
+			if (!LoadoutComponent->EquipCard(CardDefinition))
 			{
 				UE_LOG(LogSurvivorArena, Error, TEXT("GrantStartingLoadoutToPlayer failed to equip DefaultStartingCard. Controller=%s Card=%s"),
 					*GetNameSafe(PlayerController),
@@ -329,6 +336,8 @@ bool ASurvivorGameMode::GrantStartingLoadoutToPlayer(APlayerController* PlayerCo
 			}
 		}
 	}
+
+	LoadoutComponent->NotifyRunStarted();
 
 	LoadoutGrantedPlayers.Add(PlayerControllerKey);
 

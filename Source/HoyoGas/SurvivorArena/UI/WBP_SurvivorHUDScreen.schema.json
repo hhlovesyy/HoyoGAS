@@ -1,0 +1,250 @@
+{
+  "version": "1.0",
+  "widgetBlueprintName": "WBP_SurvivorHUDScreen",
+  "parentClass": "SurvivorHUDScreen",
+  "mvvm": {
+    "viewModels": [
+      {
+        "name": "ScreenViewModel",
+        "class": "VM_SurvivorHUD",
+        "creationType": "Manual"
+      }
+    ]
+  },
+  "root": {
+    "type": "CanvasPanel",
+    "name": "RootCanvas",
+    "children": [
+      {
+        "type": "SizeBox",
+        "name": "HUDSizeBox",
+        "slot": {
+          "anchors": [0, 0, 0, 0],
+          "alignment": [0, 0],
+          "position": [24, 24],
+          "size": [420, 220]
+        },
+        "props": {
+          "widthOverride": 420,
+          "heightOverride": 220
+        },
+        "children": [
+          {
+            "type": "Border",
+            "name": "HUDFrame",
+            "props": {
+              "brushColor": [0.05, 0.06, 0.08, 0.88],
+              "padding": [16, 14, 16, 14]
+            },
+            "children": [
+              {
+                "type": "VerticalBox",
+                "name": "HUDColumn",
+                "children": [
+                  {
+                    "type": "TextBlock",
+                    "name": "HUDTitleText",
+                    "slot": {
+                      "padding": [0, 0, 0, 8]
+                    },
+                    "props": {
+                      "text": "Survivor Arena",
+                      "fontSize": 20,
+                      "color": [0.98, 0.86, 0.58, 1]
+                    }
+                  },
+                  {
+                    "type": "TextBlock",
+                    "name": "LevelText",
+                    "codegen": {
+                      "bindWidget": true,
+                      "mvvm": {
+                        "destination": "Text",
+                        "sourceViewModel": "ScreenViewModel",
+                        "sourceField": "LevelText"
+                      }
+                    },
+                    "props": {
+                      "text": "Lv. 1",
+                      "fontSize": 18,
+                      "color": [0.96, 0.96, 0.96, 1]
+                    }
+                  },
+                  {
+                    "type": "TextBlock",
+                    "name": "HealthText",
+                    "slot": {
+                      "padding": [0, 10, 0, 6]
+                    },
+                    "codegen": {
+                      "bindWidget": true,
+                      "mvvm": {
+                        "destination": "Text",
+                        "sourceViewModel": "ScreenViewModel",
+                        "sourceField": "HealthText"
+                      }
+                    },
+                    "props": {
+                      "text": "100 / 100",
+                      "fontSize": 18,
+                      "color": [0.96, 0.96, 0.96, 1]
+                    }
+                  },
+                  {
+                    "type": "ProgressBar",
+                    "name": "HealthProgressBar",
+                    "slot": {
+                      "padding": [0, 0, 0, 12]
+                    },
+                    "codegen": {
+                      "bindWidget": true,
+                      "mvvm": {
+                        "destination": "Percent",
+                        "sourceViewModel": "ScreenViewModel",
+                        "sourceField": "HealthPercent"
+                      }
+                    },
+                    "props": {
+                      "percent": 1.0
+                    }
+                  },
+                  {
+                    "type": "TextBlock",
+                    "name": "WeaponCountText",
+                    "slot": {
+                      "padding": [0, 0, 0, 8]
+                    },
+                    "codegen": {
+                      "bindWidget": true,
+                      "mvvm": {
+                        "destination": "Text",
+                        "sourceViewModel": "ScreenViewModel",
+                        "sourceField": "WeaponCountText"
+                      }
+                    },
+                    "props": {
+                      "text": "Weapons: 0",
+                      "fontSize": 16,
+                      "color": [0.9, 0.9, 0.9, 1]
+                    }
+                  },
+                  {
+                    "type": "TextBlock",
+                    "name": "GoldText",
+                    "slot": {
+                      "padding": [0, 0, 0, 8]
+                    },
+                    "codegen": {
+                      "bindWidget": true,
+                      "mvvm": {
+                        "destination": "Text",
+                        "sourceViewModel": "ScreenViewModel",
+                        "sourceField": "GoldText"
+                      }
+                    },
+                    "props": {
+                      "text": "Gold: 0",
+                      "fontSize": 16,
+                      "color": [0.95, 0.88, 0.45, 1]
+                    }
+                  },
+                  {
+                    "type": "TextBlock",
+                    "name": "ExperienceText",
+                    "slot": {
+                      "padding": [0, 0, 0, 8]
+                    },
+                    "codegen": {
+                      "bindWidget": true,
+                      "mvvm": {
+                        "destination": "Text",
+                        "sourceViewModel": "ScreenViewModel",
+                        "sourceField": "ExperienceText"
+                      }
+                    },
+                    "props": {
+                      "text": "XP: 0",
+                      "fontSize": 16,
+                      "color": [0.72, 0.95, 0.78, 1]
+                    }
+                  },
+                  {
+                    "type": "TextBlock",
+                    "name": "CardSlotsText",
+                    "slot": {
+                      "padding": [0, 0, 0, 8]
+                    },
+                    "codegen": {
+                      "bindWidget": true,
+                      "mvvm": {
+                        "destination": "Text",
+                        "sourceViewModel": "ScreenViewModel",
+                        "sourceField": "CardSlotsText"
+                      }
+                    },
+                    "props": {
+                      "text": "Cards: 0 / 3",
+                      "fontSize": 16,
+                      "color": [0.9, 0.9, 0.9, 1]
+                    }
+                  },
+                  {
+                    "type": "TextBlock",
+                    "name": "EquippedCardsText",
+                    "slot": {
+                      "padding": [0, 0, 0, 8]
+                    },
+                    "codegen": {
+                      "bindWidget": true,
+                      "mvvm": {
+                        "destination": "Text",
+                        "sourceViewModel": "ScreenViewModel",
+                        "sourceField": "EquippedCardsText"
+                      }
+                    },
+                    "props": {
+                      "text": "<None>",
+                      "fontSize": 15,
+                      "color": [0.84, 0.86, 0.9, 1],
+                      "autoWrap": true
+                    }
+                  },
+                  {
+                    "type": "TextBlock",
+                    "name": "CardTagsLabelText",
+                    "slot": {
+                      "padding": [0, 4, 0, 4]
+                    },
+                    "props": {
+                      "text": "Card Tags",
+                      "fontSize": 13,
+                      "color": [0.76, 0.8, 0.88, 1]
+                    }
+                  },
+                  {
+                    "type": "TextBlock",
+                    "name": "CardTagsText",
+                    "codegen": {
+                      "bindWidget": true,
+                      "mvvm": {
+                        "destination": "Text",
+                        "sourceViewModel": "ScreenViewModel",
+                        "sourceField": "CardTagsText"
+                      }
+                    },
+                    "props": {
+                      "text": "<None>",
+                      "fontSize": 14,
+                      "color": [0.72, 0.8, 0.95, 1],
+                      "autoWrap": true
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

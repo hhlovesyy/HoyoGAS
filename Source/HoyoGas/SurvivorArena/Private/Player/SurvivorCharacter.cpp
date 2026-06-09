@@ -8,6 +8,7 @@
 #include "GAS/SurvivorAbilitySystemComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Player/SurvivorPlayerState.h"
+#include "Pickups/SurvivorPickupCollectorComponent.h"
 #include "Weapons/SurvivorWeaponManagerComponent.h"
 
 ASurvivorCharacter::ASurvivorCharacter()
@@ -59,6 +60,7 @@ ASurvivorCharacter::ASurvivorCharacter()
 	FaceShadowComponent->SetCharacterMeshComponent(VisualCharacterMesh);
 
 	WeaponManagerComponent = CreateDefaultSubobject<USurvivorWeaponManagerComponent>(TEXT("WeaponManagerComponent"));
+	PickupCollectorComponent = CreateDefaultSubobject<USurvivorPickupCollectorComponent>(TEXT("PickupCollectorComponent"));
 }
 
 void ASurvivorCharacter::BeginPlay()
@@ -127,6 +129,11 @@ FVector ASurvivorCharacter::GetCameraPivotLocation() const
 USurvivorWeaponManagerComponent* ASurvivorCharacter::GetWeaponManagerComponent() const
 {
 	return WeaponManagerComponent;
+}
+
+USurvivorPickupCollectorComponent* ASurvivorCharacter::GetPickupCollectorComponent() const
+{
+	return PickupCollectorComponent;
 }
 
 USkeletalMeshComponent* ASurvivorCharacter::ResolvePrimaryVisualMesh() const
