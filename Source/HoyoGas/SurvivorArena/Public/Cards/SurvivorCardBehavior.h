@@ -2,9 +2,12 @@
 
 #include "CoreMinimal.h"
 #include "Cards/SurvivorCardRuntimeData.h"
+#include "GameplayTagContainer.h"
 #include "UObject/Object.h"
 #include "Cards/SurvivorCardRuntimeTypes.h"
 #include "SurvivorCardBehavior.generated.h"
+
+class UAbilitySystemComponent;
 
 UCLASS(Abstract, BlueprintType, EditInlineNew, DefaultToInstanced)
 class HOYOGAS_API USurvivorCardBehavior : public UObject
@@ -40,5 +43,11 @@ protected:
 	const FSurvivorCardRuntimeInstance* ResolveRuntimeInstance(const FSurvivorCardBehaviorContext& Context) const;
 	FSurvivorCardRuntimeState* ResolveMutableRuntimeState(const FSurvivorCardBehaviorContext& Context) const;
 	USurvivorCardRuntimeData* ResolveRuntimeData(const FSurvivorCardBehaviorContext& Context, TSubclassOf<USurvivorCardRuntimeData> RuntimeDataClass) const;
+	void ExecuteGameplayCue(
+		const FSurvivorCardBehaviorContext& Context,
+		UAbilitySystemComponent* SourceASC,
+		FGameplayTag GameplayCueTag,
+		float RawMagnitude = 0.0f,
+		const FGameplayEffectContextHandle* EffectContext = nullptr) const;
 	FName ResolveRuntimeStateKey() const;
 };

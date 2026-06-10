@@ -22,9 +22,20 @@ public:
 	const FText& GetHealthText() const;
 	float GetHealthPercent() const;
 	const FText& GetLevelText() const;
+	int32 GetSurvivorLevelValue() const;
 	const FText& GetWeaponCountText() const;
 	const FText& GetGoldText() const;
 	const FText& GetExperienceText() const;
+	float GetCurrentExperienceValue() const;
+	bool HasExperienceProgressTarget() const;
+	float GetExperienceProgressTargetValue() const;
+	float GetExperienceProgressPercent() const;
+	int32 GetGoldDelta() const;
+	float GetExperienceDelta() const;
+	int32 GetGoldChangeEventId() const;
+	int32 GetExperienceChangeEventId() const;
+	float GetExperienceLevelUpClearedAmount() const;
+	int32 GetExperienceLevelUpEventId() const;
 	const FText& GetCardSlotsText() const;
 	const FText& GetEquippedCardsText() const;
 	const FText& GetCardTagsText() const;
@@ -39,6 +50,7 @@ protected:
 	void BindWeaponManager(USurvivorWeaponManagerComponent* InWeaponManager);
 	void UnbindWeaponManager();
 	void RefreshAll();
+	void RefreshEconomySnapshot(bool bAllowDeltaEvents);
 	void RebuildDisplayValues();
 
 	void HandleHealthChanged(const FOnAttributeChangeData& Data);
@@ -79,6 +91,20 @@ protected:
 
 	UPROPERTY(Transient)
 	FText ExperienceText;
+
+	int32 CachedSurvivorLevel = 1;
+	int32 CachedGold = 0;
+	float CachedExperience = 0.0f;
+	bool bHasExperienceProgressTarget = false;
+	float ExperienceProgressTargetValue = 0.0f;
+	float ExperienceProgressPercent = 0.0f;
+	int32 GoldDelta = 0;
+	float ExperienceDelta = 0.0f;
+	int32 GoldChangeEventId = 0;
+	int32 ExperienceChangeEventId = 0;
+	float ExperienceLevelUpClearedAmount = 0.0f;
+	int32 ExperienceLevelUpEventId = 0;
+	bool bHasEconomySnapshot = false;
 
 	UPROPERTY(Transient)
 	FText CardSlotsText;

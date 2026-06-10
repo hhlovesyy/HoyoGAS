@@ -2,14 +2,15 @@
 
 #include "AbilitySystemComponent.h"
 #include "Cards/SurvivorCardDefinition.h"
-#include "Core/SurvivorGameplayTags.h"
 #include "Core/SurvivorArenaLog.h"
+#include "Core/SurvivorGameplayTags.h"
 #include "Data/SurvivorArenaTypes.h"
 #include "Enemies/SurvivorDummyEnemy.h"
 #include "Engine/Engine.h"
 #include "EngineUtils.h"
 #include "GAS/SurvivorAttributeSet.h"
 #include "GameplayEffect.h"
+#include "GameplayEffectTypes.h"
 
 void USurvivorCardBehaviorTomoriNotes::OnEnemyKilled_Implementation(const FSurvivorCardEnemyKillContext& Context) const
 {
@@ -61,9 +62,7 @@ void USurvivorCardBehaviorTomoriNotes::TriggerPoemBurst(const FSurvivorCardBehav
 		return;
 	}
 
-	const FGameplayTag DamageSetByCallerTag = ResolveBurstDamageSetByCallerTag(); //SetByCaller 的值不是全局存在某个 GameplayTag 里，它是存在“这一次创建出来的 GameplayEffectSpec”里的，GameplayTag 只是这个 Spec 内部的 key
-	//所以：卡 A 生成一个伤害 Spec，写 Survivor_Damage_SetByCaller = 35;卡 B 生成另一个伤害 Spec，写 Survivor_Damage_SetByCaller = 120 这两个不会互相覆盖，因为它们是两个不同的 Spec。
-	//多张卡共用一个伤害 SetByCaller Tag 没问题,前提是他们对这个Tag的语义完全一致
+	const FGameplayTag DamageSetByCallerTag = ResolveBurstDamageSetByCallerTag();
 	if (DamageSetByCallerTag.IsValid())
 	{
 		DamageSpecHandle.Data->SetSetByCallerMagnitude(DamageSetByCallerTag, -BurstDamage);
@@ -92,6 +91,11 @@ void USurvivorCardBehaviorTomoriNotes::TriggerPoemBurst(const FSurvivorCardBehav
 
 		SourceASC->ApplyGameplayEffectSpecToTarget(*DamageSpecHandle.Data.Get(), TargetASC);
 		++DamagedEnemyCount;
+	}
+
+	if (DamagedEnemyCount > 0 && PoemBurstGameplayCueTag.IsValid())
+	{
+		ExecuteGameplayCue(Context, SourceASC, PoemBurstGameplayCueTag, BurstDamage, &EffectContext);
 	}
 
 	UE_LOG(LogSurvivorArena, Log, TEXT("Tomori Poem Burst triggered. Owner=%s DamageGE=%s Damage=%.2f DamagedTargets=%d"),

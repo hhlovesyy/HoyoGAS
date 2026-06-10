@@ -57,6 +57,11 @@ const FText& USurvivorHUDStore::GetLevelText() const
 	return LevelText;
 }
 
+int32 USurvivorHUDStore::GetSurvivorLevelValue() const
+{
+	return CachedSurvivorLevel;
+}
+
 const FText& USurvivorHUDStore::GetWeaponCountText() const
 {
 	return WeaponCountText;
@@ -70,6 +75,56 @@ const FText& USurvivorHUDStore::GetGoldText() const
 const FText& USurvivorHUDStore::GetExperienceText() const
 {
 	return ExperienceText;
+}
+
+float USurvivorHUDStore::GetCurrentExperienceValue() const
+{
+	return CachedExperience;
+}
+
+bool USurvivorHUDStore::HasExperienceProgressTarget() const
+{
+	return bHasExperienceProgressTarget;
+}
+
+float USurvivorHUDStore::GetExperienceProgressTargetValue() const
+{
+	return ExperienceProgressTargetValue;
+}
+
+float USurvivorHUDStore::GetExperienceProgressPercent() const
+{
+	return ExperienceProgressPercent;
+}
+
+int32 USurvivorHUDStore::GetGoldDelta() const
+{
+	return GoldDelta;
+}
+
+float USurvivorHUDStore::GetExperienceDelta() const
+{
+	return ExperienceDelta;
+}
+
+int32 USurvivorHUDStore::GetGoldChangeEventId() const
+{
+	return GoldChangeEventId;
+}
+
+int32 USurvivorHUDStore::GetExperienceChangeEventId() const
+{
+	return ExperienceChangeEventId;
+}
+
+float USurvivorHUDStore::GetExperienceLevelUpClearedAmount() const
+{
+	return ExperienceLevelUpClearedAmount;
+}
+
+int32 USurvivorHUDStore::GetExperienceLevelUpEventId() const
+{
+	return ExperienceLevelUpEventId;
 }
 
 const FText& USurvivorHUDStore::GetCardSlotsText() const
@@ -180,6 +235,16 @@ void USurvivorHUDStore::UnbindRunEconomyComponent()
 	}
 
 	RunEconomyComponent.Reset();
+	CachedSurvivorLevel = 1;
+	CachedGold = 0;
+	CachedExperience = 0.0f;
+	bHasExperienceProgressTarget = false;
+	ExperienceProgressTargetValue = 0.0f;
+	ExperienceProgressPercent = 0.0f;
+	GoldDelta = 0;
+	ExperienceDelta = 0.0f;
+	ExperienceLevelUpClearedAmount = 0.0f;
+	bHasEconomySnapshot = false;
 }
 
 void USurvivorHUDStore::BindWeaponManager(USurvivorWeaponManagerComponent* InWeaponManager)
@@ -221,6 +286,7 @@ void USurvivorHUDStore::RefreshAll()
 		MaxHealth = 0.0f;
 	}
 
+	RefreshEconomySnapshot(false);
 	RebuildDisplayValues();
 	UE_LOG(LogSurvivorArena, Log, TEXT("SurvivorHUDStore refreshed. Health=%.2f MaxHealth=%.2f WeaponsText='%s' CardsText='%s'"),
 		Health,
@@ -228,6 +294,56 @@ void USurvivorHUDStore::RefreshAll()
 		*WeaponCountText.ToString(),
 		*CardSlotsText.ToString());
 	BroadcastStoreChanged();
+}
+
+void USurvivorHUDStore::RefreshEconomySnapshot(bool bAllowDeltaEvents)
+{
+	const ASurvivorPlayerState* SurvivorPlayerState = Cast<ASurvivorPlayerState>(ObservedPlayerState.Get());
+	const int32 NewSurvivorLevel = SurvivorPlayerState ? SurvivorPlayerState->GetSurvivorLevel() : 1;
+	const int32 NewGold = RunEconomyComponent.IsValid() ? RunEconomyComponent->GetGold() : 0;
+	const float NewExperience = RunEconomyComponent.IsValid() ? RunEconomyComponent->GetExperience() : 0.0f;
+
+	if (!bHasEconomySnapshot || !bAllowDeltaEvents)
+	{
+		CachedSurvivorLevel = NewSurvivorLevel;
+		CachedGold = NewGold;
+		CachedExperience = NewExperience;
+		bHasExperienceProgressTarget = false;
+		ExperienceProgressTargetValue = 0.0f;
+		ExperienceProgressPercent = 0.0f;
+		GoldDelta = 0;
+		ExperienceDelta = 0.0f;
+		ExperienceLevelUpClearedAmount = 0.0f;
+		bHasEconomySnapshot = true;
+		return;
+	}
+
+	const bool bLevelIncreased = NewSurvivorLevel > CachedSurvivorLevel;
+	bHasExperienceProgressTarget = false;
+	ExperienceProgressTargetValue = 0.0f;
+	ExperienceProgressPercent = 0.0f;
+	GoldDelta = NewGold - CachedGold;
+	ExperienceDelta = NewExperience - CachedExperience;
+	ExperienceLevelUpClearedAmount = 0.0f;
+
+	if (GoldDelta != 0)
+	{
+		++GoldChangeEventId;
+	}
+
+	if (bLevelIncreased)
+	{
+		ExperienceLevelUpClearedAmount = CachedExperience;
+		++ExperienceLevelUpEventId;
+	}
+	else if (!FMath::IsNearlyZero(ExperienceDelta))
+	{
+		++ExperienceChangeEventId;
+	}
+
+	CachedSurvivorLevel = NewSurvivorLevel;
+	CachedGold = NewGold;
+	CachedExperience = NewExperience;
 }
 
 void USurvivorHUDStore::RebuildDisplayValues()
@@ -238,13 +354,12 @@ void USurvivorHUDStore::RebuildDisplayValues()
 		FText::AsNumber(FMath::RoundToInt(Health)),
 		FText::AsNumber(FMath::RoundToInt(MaxHealth)));
 
-	const ASurvivorPlayerState* SurvivorPlayerState = Cast<ASurvivorPlayerState>(ObservedPlayerState.Get());
-	LevelText = FText::Format(INVTEXT("Lv. {0}"), FText::AsNumber(SurvivorPlayerState ? SurvivorPlayerState->GetSurvivorLevel() : 1));
+	LevelText = FText::Format(INVTEXT("Lv. {0}"), FText::AsNumber(CachedSurvivorLevel));
 
 	const int32 WeaponCount = WeaponManagerComponent.IsValid() ? WeaponManagerComponent->GetGrantedWeaponCount() : 0;
 	WeaponCountText = FText::Format(INVTEXT("Weapons: {0}"), FText::AsNumber(WeaponCount));
-	GoldText = FText::Format(INVTEXT("Gold: {0}"), FText::AsNumber(RunEconomyComponent.IsValid() ? RunEconomyComponent->GetGold() : 0));
-	ExperienceText = FText::Format(INVTEXT("XP: {0}"), FText::AsNumber(FMath::RoundToInt(RunEconomyComponent.IsValid() ? RunEconomyComponent->GetExperience() : 0.0f)));
+	GoldText = FText::Format(INVTEXT("Gold: {0}"), FText::AsNumber(CachedGold));
+	ExperienceText = FText::Format(INVTEXT("XP: {0}"), FText::AsNumber(FMath::RoundToInt(CachedExperience)));
 
 	const int32 UsedCardSlots = LoadoutComponent.IsValid() ? LoadoutComponent->GetUsedCardSlots() : 0;
 	const int32 MaxSlots = LoadoutComponent.IsValid() ? LoadoutComponent->GetMaxCardSlots() : 0;
@@ -275,6 +390,7 @@ void USurvivorHUDStore::HandleLoadoutChanged(USurvivorCardLoadoutComponent* Chan
 
 void USurvivorHUDStore::HandleEconomyChanged(USurvivorRunEconomyComponent* ChangedComponent)
 {
+	RefreshEconomySnapshot(true);
 	RebuildDisplayValues();
 	BroadcastStoreChanged();
 }

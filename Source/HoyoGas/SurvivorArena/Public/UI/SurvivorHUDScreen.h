@@ -27,7 +27,26 @@ protected:
 	virtual void HandlePreViewModelDetached(UObject* ViewModel) override;
 
 	void RefreshFromViewModel();
+	void RefreshDeltaAnimationState();
 	void HandleAnyHUDFieldChanged(UObject* Object, UE::FieldNotification::FFieldId FieldId);
+
+	UFUNCTION(BlueprintImplementableEvent, Category = "SurvivorArena|HUD")
+	void BP_OnGoldIncreased(int32 DeltaGold);
+
+	UFUNCTION(BlueprintImplementableEvent, Category = "SurvivorArena|HUD")
+	void BP_OnGoldDecreased(int32 DeltaGold);
+
+	UFUNCTION(BlueprintImplementableEvent, Category = "SurvivorArena|HUD")
+	void BP_OnGoldChanged(int32 DeltaGold);
+
+	UFUNCTION(BlueprintImplementableEvent, Category = "SurvivorArena|HUD")
+	void BP_OnExperienceIncreased(float DeltaExperience);
+
+	UFUNCTION(BlueprintImplementableEvent, Category = "SurvivorArena|HUD")
+	void BP_OnExperienceClearedForLevelUp(float ClearedExperience, int32 NewLevel);
+
+	UFUNCTION(BlueprintImplementableEvent, Category = "SurvivorArena|HUD")
+	void BP_OnExperienceChanged(float DeltaExperience);
 
 	UPROPERTY(Transient, BlueprintReadOnly, meta = (BindWidgetOptional))
 	TObjectPtr<UTextBlock> HealthText;
@@ -57,4 +76,8 @@ protected:
 	TObjectPtr<UTextBlock> CardTagsText;
 
 	TArray<FDelegateHandle> FieldChangedHandles;
+	bool bCanPlayDeltaAnimations = false;
+	int32 LastProcessedGoldChangeEventId = 0;
+	int32 LastProcessedExperienceChangeEventId = 0;
+	int32 LastProcessedExperienceLevelUpEventId = 0;
 };

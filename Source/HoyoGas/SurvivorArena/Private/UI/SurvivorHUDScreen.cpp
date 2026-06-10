@@ -54,15 +54,24 @@ void USurvivorHUDScreen::HandlePostViewModelAttached()
 		BindField(UVM_SurvivorHUD::FFieldNotificationClassDescriptor::HealthText);
 		BindField(UVM_SurvivorHUD::FFieldNotificationClassDescriptor::HealthPercent);
 		BindField(UVM_SurvivorHUD::FFieldNotificationClassDescriptor::LevelText);
+		BindField(UVM_SurvivorHUD::FFieldNotificationClassDescriptor::SurvivorLevelValue);
 		BindField(UVM_SurvivorHUD::FFieldNotificationClassDescriptor::WeaponCountText);
 		BindField(UVM_SurvivorHUD::FFieldNotificationClassDescriptor::GoldText);
 		BindField(UVM_SurvivorHUD::FFieldNotificationClassDescriptor::ExperienceText);
+		BindField(UVM_SurvivorHUD::FFieldNotificationClassDescriptor::GoldDelta);
+		BindField(UVM_SurvivorHUD::FFieldNotificationClassDescriptor::ExperienceDelta);
+		BindField(UVM_SurvivorHUD::FFieldNotificationClassDescriptor::GoldChangeEventId);
+		BindField(UVM_SurvivorHUD::FFieldNotificationClassDescriptor::ExperienceChangeEventId);
+		BindField(UVM_SurvivorHUD::FFieldNotificationClassDescriptor::ExperienceLevelUpClearedAmount);
+		BindField(UVM_SurvivorHUD::FFieldNotificationClassDescriptor::ExperienceLevelUpEventId);
 		BindField(UVM_SurvivorHUD::FFieldNotificationClassDescriptor::CardSlotsText);
 		BindField(UVM_SurvivorHUD::FFieldNotificationClassDescriptor::EquippedCardsText);
 		BindField(UVM_SurvivorHUD::FFieldNotificationClassDescriptor::CardTagsText);
 	}
 
 	RefreshFromViewModel();
+	RefreshDeltaAnimationState();
+	bCanPlayDeltaAnimations = true;
 }
 
 void USurvivorHUDScreen::HandlePreViewModelDetached(UObject* ViewModel)
@@ -74,9 +83,16 @@ void USurvivorHUDScreen::HandlePreViewModelDetached(UObject* ViewModel)
 			UVM_SurvivorHUD::FFieldNotificationClassDescriptor::HealthText,
 			UVM_SurvivorHUD::FFieldNotificationClassDescriptor::HealthPercent,
 			UVM_SurvivorHUD::FFieldNotificationClassDescriptor::LevelText,
+			UVM_SurvivorHUD::FFieldNotificationClassDescriptor::SurvivorLevelValue,
 			UVM_SurvivorHUD::FFieldNotificationClassDescriptor::WeaponCountText,
 			UVM_SurvivorHUD::FFieldNotificationClassDescriptor::GoldText,
 			UVM_SurvivorHUD::FFieldNotificationClassDescriptor::ExperienceText,
+			UVM_SurvivorHUD::FFieldNotificationClassDescriptor::GoldDelta,
+			UVM_SurvivorHUD::FFieldNotificationClassDescriptor::ExperienceDelta,
+			UVM_SurvivorHUD::FFieldNotificationClassDescriptor::GoldChangeEventId,
+			UVM_SurvivorHUD::FFieldNotificationClassDescriptor::ExperienceChangeEventId,
+			UVM_SurvivorHUD::FFieldNotificationClassDescriptor::ExperienceLevelUpClearedAmount,
+			UVM_SurvivorHUD::FFieldNotificationClassDescriptor::ExperienceLevelUpEventId,
 			UVM_SurvivorHUD::FFieldNotificationClassDescriptor::CardSlotsText,
 			UVM_SurvivorHUD::FFieldNotificationClassDescriptor::EquippedCardsText,
 			UVM_SurvivorHUD::FFieldNotificationClassDescriptor::CardTagsText
@@ -93,6 +109,10 @@ void USurvivorHUDScreen::HandlePreViewModelDetached(UObject* ViewModel)
 	}
 
 	FieldChangedHandles.Reset();
+	bCanPlayDeltaAnimations = false;
+	LastProcessedGoldChangeEventId = 0;
+	LastProcessedExperienceChangeEventId = 0;
+	LastProcessedExperienceLevelUpEventId = 0;
 }
 
 void USurvivorHUDScreen::RefreshFromViewModel()
@@ -149,9 +169,62 @@ void USurvivorHUDScreen::RefreshFromViewModel()
 	}
 }
 
+void USurvivorHUDScreen::RefreshDeltaAnimationState()
+{
+	const UVM_SurvivorHUD* HUDViewModel = Cast<UVM_SurvivorHUD>(GetViewModelObject());
+	if (!HUDViewModel)
+	{
+		return;
+	}
+
+	const int32 NewGoldChangeEventId = HUDViewModel->GetGoldChangeEventId();
+	if (NewGoldChangeEventId != LastProcessedGoldChangeEventId)
+	{
+		LastProcessedGoldChangeEventId = NewGoldChangeEventId;
+		if (bCanPlayDeltaAnimations)
+		{
+			const int32 DeltaGold = HUDViewModel->GetGoldDelta();
+			if (DeltaGold > 0)
+			{
+				BP_OnGoldIncreased(DeltaGold);
+				BP_OnGoldChanged(DeltaGold);
+			}
+			else if (DeltaGold < 0)
+			{
+				BP_OnGoldDecreased(DeltaGold);
+				BP_OnGoldChanged(DeltaGold);
+			}
+		}
+	}
+
+	const int32 NewExperienceChangeEventId = HUDViewModel->GetExperienceChangeEventId();
+	if (NewExperienceChangeEventId != LastProcessedExperienceChangeEventId)
+	{
+		LastProcessedExperienceChangeEventId = NewExperienceChangeEventId;
+		if (bCanPlayDeltaAnimations && HUDViewModel->GetExperienceDelta() > 0.0f)
+		{
+			BP_OnExperienceIncreased(HUDViewModel->GetExperienceDelta());
+			BP_OnExperienceChanged(HUDViewModel->GetExperienceDelta());
+		}
+	}
+
+	const int32 NewExperienceLevelUpEventId = HUDViewModel->GetExperienceLevelUpEventId();
+	if (NewExperienceLevelUpEventId != LastProcessedExperienceLevelUpEventId)
+	{
+		LastProcessedExperienceLevelUpEventId = NewExperienceLevelUpEventId;
+		if (bCanPlayDeltaAnimations)
+		{
+			BP_OnExperienceClearedForLevelUp(
+				HUDViewModel->GetExperienceLevelUpClearedAmount(),
+				HUDViewModel->GetSurvivorLevelValue());
+		}
+	}
+}
+
 void USurvivorHUDScreen::HandleAnyHUDFieldChanged(UObject* Object, UE::FieldNotification::FFieldId FieldId)
 {
 	(void)Object;
 	(void)FieldId;
 	RefreshFromViewModel();
+	RefreshDeltaAnimationState();
 }

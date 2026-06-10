@@ -46,6 +46,9 @@ protected:
 	FGameplayTag BurstDamageSetByCallerTag;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "SurvivorArena|Cards|Tomori")
+	FGameplayTag PoemBurstGameplayCueTag;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "SurvivorArena|Cards|Tomori")
 	FGameplayTagContainer RequiredEnemyTags;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "SurvivorArena|Cards|Tomori")
